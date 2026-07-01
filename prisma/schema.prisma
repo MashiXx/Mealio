@@ -1,0 +1,346 @@
+// Mealio — Prisma schema
+// Multi-tenant: mọi model nghiệp vụ gắn familyId và luôn được scope theo gia đình
+// của user đăng nhập (xem src/lib/tenant.ts).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------------
+// Auth.js (NextAuth) — credentials + JWT; Account/Session để dành cho
+// OAuth về sau. PrismaAdapter dùng các model này.
+// ------------------------------------------------------------------
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String?
+  passwordHash String?
+  image        String?
+  createdAt    DateTime  @default(now())
+
+  familyId String?
+  family   Family? @relation(fields: [familyId], references: [id], onDelete: SetNull)
+
+  accounts Account[]
+  sessions Session[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ------------------------------------------------------------------
+// Tenant: Family + hồ sơ ăn uống
+// ------------------------------------------------------------------
+
+model Family {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  users        User[]
+  members      FamilyMember[]
+  profile      EatingProfile?
+  aiSettings   AISettings?
+  ingredients  Ingredient[]   @relation("FamilyIngredients")
+  pantryItems  PantryItem[]
+  recipes      Recipe[]
+  mealPlans    MealPlan[]
+  plannedMeals PlannedMeal[]
+  history      MealHistory[]
+  shoppingLists ShoppingList[]
+}
+
+model FamilyMember {
+  id       String @id @default(cuid())
+  familyId String
+  family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  name                String
+  image               String?  // đường dẫn avatar (vd: /uploads/<uuid>.jpg)
+  ageGroup            AgeGroup @default(ADULT)
+  allergies           String[] @default([])
+  dietaryRestrictions String[] @default([])
+  likes               String[] @default([])
+  dislikes            String[] @default([])
+
+  @@index([familyId])
+}
+
+enum AgeGroup {
+  BABY
+  CHILD
+  TEEN
+  ADULT
+  SENIOR
+}
+
+model EatingProfile {
+  id       String @id @default(cuid())
+  familyId String @unique
+  family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  cuisineRegion  CuisineRegion @default(MIEN_BAC)
+  spiceLevel     SpiceLevel    @default(MEDIUM)
+  budgetLevel    BudgetLevel   @default(MEDIUM)
+  maxCookMinutes Int           @default(60)
+  healthGoals    String[]      @default([]) // nhãn định tính: nhiều rau, ít dầu mỡ...
+  notes          String?
+}
+
+enum CuisineRegion {
+  MIEN_BAC
+  MIEN_TRUNG
+  MIEN_NAM
+  KHONG_CO_KHAU_VI // linh hoạt
+}
+
+enum SpiceLevel {
+  NONE
+  MILD
+  MEDIUM
+  HOT
+}
+
+enum BudgetLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+// ------------------------------------------------------------------
+// AI settings (BYOK) — key mã hoá, chỉ giải mã ở server
+// ------------------------------------------------------------------
+
+model AISettings {
+  id       String @id @default(cuid())
+  familyId String @unique
+  family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  provider        AIProvider @default(ANTHROPIC)
+  baseUrl         String?
+  apiKeyEncrypted String?
+  model           String     @default("claude-opus-4-8")
+  updatedAt       DateTime   @updatedAt
+}
+
+enum AIProvider {
+  ANTHROPIC
+  OPENAI_COMPATIBLE
+}
+
+// ------------------------------------------------------------------
+// Nguyên liệu chuẩn hoá + kho thực phẩm
+// ------------------------------------------------------------------
+
+model Ingredient {
+  id          String @id @default(cuid())
+  familyId    String
+  family      Family @relation("FamilyIngredients", fields: [familyId], references: [id], onDelete: Cascade)
+  name        String
+  normalized  String // tên chuẩn hoá (lowercase, bỏ dấu) để match
+  defaultUnit String @default("phần")
+
+  pantryItems       PantryItem[]
+  recipeIngredients RecipeIngredient[]
+  shoppingItems     ShoppingItem[]
+
+  @@unique([familyId, normalized])
+  @@index([familyId])
+}
+
+model PantryItem {
+  id       String @id @default(cuid())
+  familyId String
+  family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  quantity Float    @default(1)
+  unit     String   @default("phần")
+  expiresAt DateTime?
+  updatedAt DateTime @updatedAt
+
+  @@index([familyId])
+}
+
+// ------------------------------------------------------------------
+// Công thức (kho riêng của gia đình)
+// ------------------------------------------------------------------
+
+model Recipe {
+  id       String @id @default(cuid())
+  familyId String
+  family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  name            String
+  source          RecipeSource @default(AI)
+  servings        Int          @default(4)
+  cookMinutes     Int          @default(30)
+  steps           String[]     @default([])
+  nutritionLabels String[]     @default([]) // nhiều rau, ít dầu mỡ, thanh đạm...
+  createdAt       DateTime     @default(now())
+
+  ingredients  RecipeIngredient[]
+  plannedMeals PlannedMeal[]
+  history      MealHistory[]
+
+  @@index([familyId])
+}
+
+enum RecipeSource {
+  AI
+  MANUAL
+}
+
+model RecipeIngredient {
+  id       String @id @default(cuid())
+  recipeId String
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  quantity Float  @default(1)
+  unit     String @default("phần")
+
+  @@index([recipeId])
+}
+
+// ------------------------------------------------------------------
+// Kế hoạch bữa ăn (ngày/tuần)
+// ------------------------------------------------------------------
+
+model MealPlan {
+  id       String @id @default(cuid())
+  familyId String
+  family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime @default(now())
+
+  meals PlannedMeal[]
+
+  @@index([familyId])
+}
+
+model PlannedMeal {
+  id       String @id @default(cuid())
+  familyId String
+  family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  mealPlanId String?
+  mealPlan   MealPlan? @relation(fields: [mealPlanId], references: [id], onDelete: SetNull)
+
+  date     DateTime
+  mealType MealType
+  recipeId String
+  recipe   Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  servings Int      @default(4)
+
+  history MealHistory[]
+
+  @@index([familyId, date])
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+}
+
+// ------------------------------------------------------------------
+// Lịch sử & phản hồi
+// ------------------------------------------------------------------
+
+model MealHistory {
+  id       String @id @default(cuid())
+  familyId String
+  family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  plannedMealId String?
+  plannedMeal   PlannedMeal? @relation(fields: [plannedMealId], references: [id], onDelete: SetNull)
+
+  recipeId String
+  recipe   Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  cookedAt DateTime @default(now())
+  rating   Rating   @default(NEUTRAL)
+
+  @@index([familyId, cookedAt])
+}
+
+enum Rating {
+  LIKE
+  NEUTRAL
+  DISLIKE
+}
+
+// ------------------------------------------------------------------
+// Danh sách đi chợ
+// ------------------------------------------------------------------
+
+model ShoppingList {
+  id       String @id @default(cuid())
+  familyId String
+  family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  items     ShoppingItem[]
+
+  @@index([familyId])
+}
+
+model ShoppingItem {
+  id             String @id @default(cuid())
+  shoppingListId String
+  shoppingList   ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  quantity  Float   @default(1)
+  unit      String  @default("phần")
+  purchased Boolean @default(false)
+
+  @@index([shoppingListId])
+}

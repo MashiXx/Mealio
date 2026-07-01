@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Ảnh upload lúc chạy (không commit)
+/public/uploads/
