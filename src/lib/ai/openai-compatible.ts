@@ -1,4 +1,3 @@
-import OpenAI from "openai";
 import type { AIProvider, MenuContext, MemberImage } from "./types";
 import { buildMenuPrompt, buildRecognitionPrompt } from "./prompt";
 import {
@@ -7,20 +6,23 @@ import {
   type AiMenu,
   type MemberRecognition,
 } from "./schema";
+import { buildOpenAIClient, type BasicAuth } from "./openai-client";
 
 // Adapter cho endpoint kiểu OpenAI (OpenAI, model tự host, LM Studio, Ollama...).
-// baseUrl cho phép trỏ tới API tự tạo của người dùng.
+// baseUrl trỏ tới API tuỳ chỉnh; basicAuth cho endpoint sau reverse proxy.
 export class OpenAICompatibleProvider implements AIProvider {
   constructor(
-    private apiKey: string,
-    private model: string,
-    private baseUrl?: string,
+    protected apiKey: string,
+    protected model: string,
+    protected baseUrl?: string,
+    protected basicAuth?: BasicAuth,
   ) {}
 
-  private client() {
-    return new OpenAI({
+  protected client() {
+    return buildOpenAIClient({
       apiKey: this.apiKey,
-      ...(this.baseUrl ? { baseURL: this.baseUrl } : {}),
+      baseUrl: this.baseUrl,
+      basicAuth: this.basicAuth,
     });
   }
 
