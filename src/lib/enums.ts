@@ -37,7 +37,8 @@ export const MEAL_TYPES = [
 
 export const AI_PROVIDERS = [
   { value: "ANTHROPIC", label: "Anthropic (Claude)" },
-  { value: "OPENAI_COMPATIBLE", label: "OpenAI-compatible (OpenAI, tự host, Ollama…)" },
+  { value: "OPENAI_COMPATIBLE", label: "OpenAI-compatible (OpenAI, tự host…)" },
+  { value: "OLLAMA", label: "Ollama (tự host)" },
 ] as const;
 
 export const MEAL_TYPE_LABEL: Record<string, string> = Object.fromEntries(

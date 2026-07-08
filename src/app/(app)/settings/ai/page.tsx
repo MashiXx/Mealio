@@ -20,6 +20,7 @@ export default async function AISettingsPage() {
           model={settings?.model ?? "claude-opus-4-8"}
           baseUrl={settings?.baseUrl ?? ""}
           hasKey={Boolean(settings?.apiKeyEncrypted)}
+          hasBasicAuth={Boolean(settings?.basicAuthEncrypted)}
         />
       </div>
     </div>
