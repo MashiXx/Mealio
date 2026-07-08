@@ -154,16 +154,18 @@ model AISettings {
   familyId String @unique
   family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
-  provider        AIProvider @default(ANTHROPIC)
-  baseUrl         String?
-  apiKeyEncrypted String?
-  model           String     @default("claude-opus-4-8")
-  updatedAt       DateTime   @updatedAt
+  provider           AIProvider @default(ANTHROPIC)
+  baseUrl            String?
+  apiKeyEncrypted    String?
+  basicAuthEncrypted String?
+  model              String     @default("claude-opus-4-8")
+  updatedAt          DateTime   @updatedAt
 }
 
 enum AIProvider {
   ANTHROPIC
   OPENAI_COMPATIBLE
+  OLLAMA
 }
 
 // ------------------------------------------------------------------
