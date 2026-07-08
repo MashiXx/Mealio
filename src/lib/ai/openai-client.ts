@@ -28,6 +28,11 @@ export type OpenAIClientOpts = {
  * defaultHeaders SAU authHeaders (openai/client.js) nên header này THAY cho
  * Bearer mặc định. HTTP chỉ cho một header Authorization.
  * apiKey rỗng vẫn truyền giá trị giả để SDK không ném lỗi khởi tạo.
+ *
+ * CẢNH BÁO: việc override Bearer dựa vào thứ tự merge header nội bộ của SDK
+ * (không có trong tài liệu công khai). Đã xác minh đúng ở openai@6.45.0 — vì
+ * vậy version bị PIN chính xác trong package.json. Khi nâng cấp `openai`, chạy
+ * lại smoke test Basic auth (request qua reverse proxy phải trả 200, không 401).
  */
 export function buildOpenAIClient(opts: OpenAIClientOpts): OpenAI {
   return new OpenAI({
