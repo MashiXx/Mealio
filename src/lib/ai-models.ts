@@ -40,3 +40,13 @@ export const OPENAI_MODEL_SUGGESTIONS = [
 ];
 
 export const CUSTOM_MODEL = "__custom__";
+
+// Model Ollama phổ biến. llava / llama3.2-vision có thị giác (cho nhận dạng ảnh).
+export const OLLAMA_MODEL_SUGGESTIONS = [
+  "llama3.1",
+  "llama3.2",
+  "qwen2.5",
+  "mistral",
+  "llava",
+  "llama3.2-vision",
+];
