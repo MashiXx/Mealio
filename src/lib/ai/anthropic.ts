@@ -1,5 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { AIProvider, MenuContext, MemberImage } from "./types";
+import type {
+  AIProvider,
+  MenuContext,
+  MemberImage,
+  TestConnectionResult,
+} from "./types";
 import { buildMenuPrompt, buildRecognitionPrompt } from "./prompt";
 import {
   parseMenuJson,
@@ -28,6 +33,11 @@ export class AnthropicProvider implements AIProvider {
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
       .join("");
+  }
+
+  async testConnection(): Promise<TestConnectionResult> {
+    const res = await this.client().models.list();
+    return { models: res.data.map((m) => m.id) };
   }
 
   async generateMenu(ctx: MenuContext): Promise<AiMenu> {

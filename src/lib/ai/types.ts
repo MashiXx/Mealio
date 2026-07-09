@@ -52,8 +52,18 @@ export interface MenuContext {
   slots: MenuSlot[];
 }
 
+/** Kết quả kiểm tra kết nối nhẹ: danh sách model id endpoint báo là khả dụng. */
+export interface TestConnectionResult {
+  models: string[];
+}
+
 /** Giao diện chung cho mọi nhà cung cấp AI (adapter). */
 export interface AIProvider {
   generateMenu(ctx: MenuContext): Promise<AiMenu>;
   recognizeMember(image: MemberImage): Promise<MemberRecognition>;
+  /**
+   * Gọi thử endpoint bằng lệnh liệt kê model (tốn ~0 token) để xác nhận
+   * kết nối + xác thực. Ném lỗi khi không kết nối được / auth sai.
+   */
+  testConnection(): Promise<TestConnectionResult>;
 }

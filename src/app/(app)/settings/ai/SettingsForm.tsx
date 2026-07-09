@@ -3,7 +3,9 @@
 import { useActionState, useState } from "react";
 import {
   saveAISettingsAction,
+  testAISettingsAction,
   type SettingsState,
+  type TestState,
 } from "@/lib/actions/settings";
 import { AI_PROVIDERS } from "@/lib/enums";
 import {
@@ -22,6 +24,14 @@ type Props = {
 };
 
 const initial: SettingsState = {};
+const initialTest: TestState = {};
+
+// Màu sắc bảng thông báo test theo trạng thái.
+const TEST_STYLE: Record<string, string> = {
+  ok: "bg-emerald-50 text-emerald-700",
+  warn: "bg-amber-50 text-amber-700",
+  error: "bg-red-50 text-red-700",
+};
 
 const PROVIDER_BLURB: Record<string, string> = {
   ANTHROPIC: "Dùng trực tiếp API Claude",
@@ -45,6 +55,10 @@ export function SettingsForm({
   const [state, formAction, pending] = useActionState(
     saveAISettingsAction,
     initial,
+  );
+  const [testState, testAction, testPending] = useActionState(
+    testAISettingsAction,
+    initialTest,
   );
 
   const [prov, setProv] = useState(provider);
@@ -333,13 +347,36 @@ export function SettingsForm({
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
-      >
-        {pending ? "Đang lưu…" : "Lưu cấu hình"}
-      </button>
+      {/* Kết quả test kết nối (trên giá trị đang nhập, không cần lưu trước) */}
+      {testState.message && (
+        <p
+          className={`rounded-lg px-3 py-2 text-sm ${
+            TEST_STYLE[testState.status ?? "error"]
+          }`}
+          aria-live="polite"
+        >
+          {testState.message}
+        </p>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="submit"
+          disabled={pending}
+          className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+        >
+          {pending ? "Đang lưu…" : "Lưu cấu hình"}
+        </button>
+        {/* Nút Test: formAction riêng -> gọi testAISettingsAction với cùng form data */}
+        <button
+          type="submit"
+          formAction={testAction}
+          disabled={testPending}
+          className="rounded-lg border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-60"
+        >
+          {testPending ? "Đang test…" : "Test kết nối"}
+        </button>
+      </div>
     </form>
   );
 }

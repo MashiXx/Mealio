@@ -1,4 +1,9 @@
-import type { AIProvider, MenuContext, MemberImage } from "./types";
+import type {
+  AIProvider,
+  MenuContext,
+  MemberImage,
+  TestConnectionResult,
+} from "./types";
 import { buildMenuPrompt, buildRecognitionPrompt } from "./prompt";
 import {
   parseMenuJson,
@@ -24,6 +29,11 @@ export class OpenAICompatibleProvider implements AIProvider {
       baseUrl: this.baseUrl,
       basicAuth: this.basicAuth,
     });
+  }
+
+  async testConnection(): Promise<TestConnectionResult> {
+    const res = await this.client().models.list();
+    return { models: res.data.map((m) => m.id) };
   }
 
   async generateMenu(ctx: MenuContext): Promise<AiMenu> {

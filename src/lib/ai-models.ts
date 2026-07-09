@@ -46,6 +46,7 @@ export const OLLAMA_MODEL_SUGGESTIONS = [
   "llama3.1",
   "llama3.2",
   "qwen2.5",
+  "qwen3-coder:30b",
   "mistral",
   "llava",
   "llama3.2-vision",

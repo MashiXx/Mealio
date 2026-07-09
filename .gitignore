@@ -42,3 +42,6 @@ next-env.d.ts
 
 # Ảnh upload lúc chạy (không commit)
 /public/uploads/
+
+# Dự án dùng yarn — chặn package-lock.json sinh bởi npm/npx
+package-lock.json
