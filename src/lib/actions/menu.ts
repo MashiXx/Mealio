@@ -4,7 +4,7 @@ import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { requireFamily } from "@/lib/tenant";
 import { prisma } from "@/lib/db";
-import { getActiveJob, processGenerationJob } from "@/lib/jobs";
+import { getActiveJob, pumpJobs } from "@/lib/jobs";
 import type { MealTypeStr } from "@/lib/ai/types";
 
 export type GenerateState = { error?: string };
@@ -42,7 +42,8 @@ export async function startGenerationAction(
     return { error: "Đang có thực đơn được tạo, vui lòng đợi hoàn tất." };
   }
 
-  const job = await prisma.generationJob.create({
+  // Đưa vào hàng đợi (PENDING); bộ điều phối sẽ quyết khi nào chạy.
+  await prisma.generationJob.create({
     data: {
       familyId,
       date: new Date(`${date}T00:00:00`), // midnight local
@@ -51,8 +52,10 @@ export async function startGenerationAction(
     },
   });
 
-  // Đăng ký chạy nền TRƯỚC redirect (redirect ném lỗi để ngắt; after vẫn chạy).
-  after(() => processGenerationJob(job.id));
+  // Kích bộ điều phối sau response: pump sẽ chạy job này nếu còn chỗ, hoặc để
+  // nó xếp hàng PENDING tới lượt. Đăng ký TRƯỚC redirect (redirect ném lỗi để
+  // ngắt; after vẫn chạy).
+  after(() => pumpJobs());
 
   redirect(`/dashboard?date=${date}`);
 }

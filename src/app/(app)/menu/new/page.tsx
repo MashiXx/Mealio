@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireFamily } from "@/lib/tenant";
-import { getActiveJob } from "@/lib/jobs";
+import { getActiveJob, getQueuePosition } from "@/lib/jobs";
 import { NewMenuForm } from "./NewMenuForm";
 
 function formatDay(d: Date): string {
@@ -11,6 +11,8 @@ function formatDay(d: Date): string {
 export default async function NewMenuPage() {
   const { familyId } = await requireFamily();
   const active = await getActiveJob(familyId);
+  const queuePos =
+    active?.status === "PENDING" ? await getQueuePosition(active) : null;
 
   return (
     <div className="mx-auto max-w-lg">
@@ -24,7 +26,9 @@ export default async function NewMenuPage() {
         // Đã có job đang chạy: chặn tạo trùng, dẫn về dashboard để theo dõi.
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
           <p className="font-medium">
-            ⏳ Đang tạo thực đơn cho ngày {formatDay(active.date)}…
+            {queuePos !== null
+              ? `⏳ Đang xếp hàng — thứ ${queuePos} trong hàng đợi (ngày ${formatDay(active.date)})`
+              : `⏳ Đang tạo thực đơn cho ngày ${formatDay(active.date)}…`}
           </p>
           <p className="mt-1 text-amber-700">
             Mỗi lần chỉ tạo được một thực đơn. Vui lòng đợi lần này hoàn tất.

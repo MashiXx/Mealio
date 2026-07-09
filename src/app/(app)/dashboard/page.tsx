@@ -2,7 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireFamily } from "@/lib/tenant";
 import { MEAL_TYPE_LABEL } from "@/lib/enums";
-import { getActiveJob, getRecentFailedJob } from "@/lib/jobs";
+import { getActiveJob, getRecentFailedJob, getQueuePosition } from "@/lib/jobs";
 import { ackJobAction } from "@/lib/actions/menu";
 import { JobPoller } from "./JobPoller";
 
@@ -36,6 +36,9 @@ export default async function DashboardPage({
   // dọn job treo (ghi DB) nên chạy tuần tự cho tất định.
   const activeJob = await getActiveJob(familyId);
   const failedJob = activeJob ? null : await getRecentFailedJob(familyId);
+  // Vị trí hàng đợi chỉ có nghĩa khi job đang chờ (PENDING).
+  const queuePos =
+    activeJob?.status === "PENDING" ? await getQueuePosition(activeJob) : null;
 
   const [family, aiSettings, meals] = await Promise.all([
     prisma.family.findUnique({
@@ -116,9 +119,20 @@ export default async function DashboardPage({
         <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-amber-300 border-t-amber-600" />
           <span>
-            Đang tạo thực đơn cho ngày{" "}
-            <strong>{formatDay(dayKey(activeJob.date))}</strong>… Bạn có thể rời
-            trang, kết quả sẽ tự hiện ở đây.
+            {queuePos !== null ? (
+              <>
+                Đang xếp hàng — <strong>thứ {queuePos}</strong> trong hàng đợi tạo
+                thực đơn cho ngày{" "}
+                <strong>{formatDay(dayKey(activeJob.date))}</strong>. Sẽ tự chạy
+                khi tới lượt.
+              </>
+            ) : (
+              <>
+                Đang tạo thực đơn cho ngày{" "}
+                <strong>{formatDay(dayKey(activeJob.date))}</strong>… Bạn có thể
+                rời trang, kết quả sẽ tự hiện ở đây.
+              </>
+            )}
           </span>
           <JobPoller />
         </div>
