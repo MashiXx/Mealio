@@ -86,6 +86,7 @@ model Family {
   plannedMeals PlannedMeal[]
   history      MealHistory[]
   shoppingLists ShoppingList[]
+  generationJobs GenerationJob[]
 }
 
 model FamilyMember {
@@ -345,4 +346,32 @@ model ShoppingItem {
   purchased Boolean @default(false)
 
   @@index([shoppingListId])
+}
+
+// ------------------------------------------------------------------
+// Job tạo thực đơn chạy ngầm
+// ------------------------------------------------------------------
+
+model GenerationJob {
+  id       String @id @default(cuid())
+  familyId String
+  family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  date      DateTime   // ngày mục tiêu (midnight)
+  mealTypes MealType[] // các bữa cần tạo
+  status    JobStatus  @default(PENDING)
+  error     String?    // lý do nếu FAILED
+
+  createdAt  DateTime  @default(now())
+  startedAt  DateTime?
+  finishedAt DateTime?
+
+  @@index([familyId, status])
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
 }

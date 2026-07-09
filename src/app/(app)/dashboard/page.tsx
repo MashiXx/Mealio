@@ -2,6 +2,9 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireFamily } from "@/lib/tenant";
 import { MEAL_TYPE_LABEL } from "@/lib/enums";
+import { getActiveJob, getRecentFailedJob } from "@/lib/jobs";
+import { ackJobAction } from "@/lib/actions/menu";
+import { JobPoller } from "./JobPoller";
 
 const MEAL_RANK: Record<string, number> = {
   BREAKFAST: 0,
@@ -29,6 +32,11 @@ export default async function DashboardPage({
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
 
+  // Job trạng thái tách khỏi Promise.all: getActiveJob/getRecentFailedJob có
+  // dọn job treo (ghi DB) nên chạy tuần tự cho tất định.
+  const activeJob = await getActiveJob(familyId);
+  const failedJob = activeJob ? null : await getRecentFailedJob(familyId);
+
   const [family, aiSettings, meals] = await Promise.all([
     prisma.family.findUnique({
       where: { id: familyId },
@@ -55,7 +63,13 @@ export default async function DashboardPage({
   }
   const days = [...byDay.keys()].sort();
 
-  const hasKey = Boolean(aiSettings?.apiKeyEncrypted);
+  // Đã cấu hình AI khi có settings và: Ollama (không cần key) hoặc đã có API key.
+  // Khớp quy tắc trong getAIProvider — nếu chỉ nhìn apiKeyEncrypted thì Ollama
+  // (hợp lệ, không key) sẽ bị báo nhầm là "chưa cấu hình".
+  const aiConfigured = Boolean(
+    aiSettings &&
+      (aiSettings.provider === "OLLAMA" || aiSettings.apiKeyEncrypted),
+  );
   const allergies = [
     ...new Set(family?.members.flatMap((m) => m.allergies) ?? []),
   ];
@@ -87,13 +101,55 @@ export default async function DashboardPage({
         </Link>
       </div>
 
-      {!hasKey && (
+      {!aiConfigured && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Bạn chưa cấu hình AI.{" "}
           <Link href="/settings/ai" className="font-medium underline">
-            Nhập API key
+            Cấu hình ngay
           </Link>{" "}
           để bắt đầu tạo thực đơn.
+        </div>
+      )}
+
+      {/* Job đang chạy: thẻ tự cập nhật (JobPoller refresh tới khi xong). */}
+      {activeJob && (
+        <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-amber-300 border-t-amber-600" />
+          <span>
+            Đang tạo thực đơn cho ngày{" "}
+            <strong>{formatDay(dayKey(activeJob.date))}</strong>… Bạn có thể rời
+            trang, kết quả sẽ tự hiện ở đây.
+          </span>
+          <JobPoller />
+        </div>
+      )}
+
+      {/* Job vừa lỗi: hiện lý do + cho thử lại / bỏ qua. */}
+      {failedJob && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <p className="font-medium">
+            Tạo thực đơn cho ngày {formatDay(dayKey(failedJob.date))} thất bại.
+          </p>
+          {failedJob.error && (
+            <p className="mt-1 text-red-600">{failedJob.error}</p>
+          )}
+          <div className="mt-3 flex gap-3">
+            <Link
+              href="/menu/new"
+              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
+            >
+              Thử lại
+            </Link>
+            <form action={ackJobAction}>
+              <input type="hidden" name="jobId" value={failedJob.id} />
+              <button
+                type="submit"
+                className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100"
+              >
+                Bỏ qua
+              </button>
+            </form>
+          </div>
         </div>
       )}
 
