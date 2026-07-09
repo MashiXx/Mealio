@@ -65,6 +65,9 @@ export async function saveMenu(
   familyId: string,
   menu: AiMenu,
 ): Promise<string[]> {
+  // Transaction ghi nhiều lượt tuần tự (upsert nguyên liệu + tạo recipe/plannedMeal)
+  // với DB ở xa dễ vượt mốc mặc định 5s của Prisma -> "Transaction not found".
+  // Nới maxWait/timeout để đủ thời gian cho thực đơn nhiều món.
   return prisma.$transaction(async (tx) => {
     const plannedIds: string[] = [];
 
@@ -126,5 +129,5 @@ export async function saveMenu(
     }
 
     return plannedIds;
-  });
+  }, { maxWait: 10_000, timeout: 30_000 });
 }
