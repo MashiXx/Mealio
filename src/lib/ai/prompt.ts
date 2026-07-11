@@ -64,6 +64,7 @@ export function buildMenuPrompt(ctx: MenuContext): {
     "- Ưu tiên tận dụng thực phẩm đang có trong kho để giảm lãng phí.",
     "- Không lặp lại các món đã ăn gần đây.",
     "- Đảm bảo cân bằng dinh dưỡng (đủ đạm, rau, tinh bột) và gắn nhãn định tính phù hợp.",
+    "- Nếu phần dưới có 'Món Việt tham khảo', hãy ƯU TIÊN chọn hoặc biến tấu từ danh sách đó để món quen thuộc, đúng ẩm thực Việt (vẫn phải tránh dị ứng/kiêng khem và không lặp món gần đây).",
     "- Món ăn và công thức viết bằng tiếng Việt.",
     "CHỈ trả về JSON đúng cấu trúc, KHÔNG kèm giải thích, KHÔNG markdown.",
     "Cấu trúc JSON:",
