@@ -42,6 +42,12 @@ export interface MenuPantryItem {
   unit: string;
 }
 
+/** Tham chiếu few-shot rút từ kho món dùng chung (đã lọc theo dị ứng/kiêng). */
+export interface CatalogReference {
+  dishNames: string[];
+  setMenus: { name: string; dishNames: string[] }[];
+}
+
 export interface MenuContext {
   familySize: number;
   members: MenuMember[];
@@ -50,6 +56,7 @@ export interface MenuContext {
   recentRecipeNames: string[]; // tránh lặp lại
   availableRecipeNames: string[]; // kho công thức đã có để ưu tiên tái dùng
   slots: MenuSlot[];
+  catalogReference?: CatalogReference; // gợi ý món Việt tham khảo cho AI
 }
 
 /** Kết quả kiểm tra kết nối nhẹ: danh sách model id endpoint báo là khả dụng. */

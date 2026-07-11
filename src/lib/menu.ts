@@ -1,7 +1,8 @@
 import { prisma } from "./db";
 import { normalizeIngredient } from "./normalize";
+import { buildCatalogReference } from "./catalog";
 import type { AiMenu } from "./ai/schema";
-import type { MenuContext, MenuSlot } from "./ai/types";
+import type { MenuContext, MenuSlot, MenuMember, MenuProfile } from "./ai/types";
 
 // Dựng ngữ cảnh cho AI từ dữ liệu gia đình, và lưu thực đơn AI trả về xuống DB
 // (Ingredient chuẩn hoá + Recipe + RecipeIngredient + PlannedMeal).
@@ -31,24 +32,28 @@ export async function buildMenuContext(
       }),
     ]);
 
+  const menuMembers: MenuMember[] = members.map((m) => ({
+    name: m.name,
+    ageGroup: m.ageGroup,
+    allergies: m.allergies,
+    dietaryRestrictions: m.dietaryRestrictions,
+    likes: m.likes,
+    dislikes: m.dislikes,
+  }));
+
+  const menuProfile: MenuProfile = {
+    cuisineRegion: profile?.cuisineRegion ?? "KHONG_CO_KHAU_VI",
+    spiceLevel: profile?.spiceLevel ?? "MEDIUM",
+    budgetLevel: profile?.budgetLevel ?? "MEDIUM",
+    maxCookMinutes: profile?.maxCookMinutes ?? 60,
+    healthGoals: profile?.healthGoals ?? [],
+    notes: profile?.notes ?? null,
+  };
+
   return {
     familySize: members.length,
-    members: members.map((m) => ({
-      name: m.name,
-      ageGroup: m.ageGroup,
-      allergies: m.allergies,
-      dietaryRestrictions: m.dietaryRestrictions,
-      likes: m.likes,
-      dislikes: m.dislikes,
-    })),
-    profile: {
-      cuisineRegion: profile?.cuisineRegion ?? "KHONG_CO_KHAU_VI",
-      spiceLevel: profile?.spiceLevel ?? "MEDIUM",
-      budgetLevel: profile?.budgetLevel ?? "MEDIUM",
-      maxCookMinutes: profile?.maxCookMinutes ?? 60,
-      healthGoals: profile?.healthGoals ?? [],
-      notes: profile?.notes ?? null,
-    },
+    members: menuMembers,
+    profile: menuProfile,
     pantry: pantry.map((p) => ({
       name: p.ingredient.name,
       quantity: p.quantity,
@@ -57,6 +62,8 @@ export async function buildMenuContext(
     recentRecipeNames: recentRecipes.map((r) => r.name),
     availableRecipeNames: allRecipes.map((r) => r.name),
     slots,
+    // Tham chiếu món Việt từ kho dùng chung, đã lọc theo dị ứng/kiêng khem.
+    catalogReference: buildCatalogReference(menuMembers, menuProfile),
   };
 }
 

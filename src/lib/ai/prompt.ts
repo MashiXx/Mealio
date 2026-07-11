@@ -123,10 +123,38 @@ export function buildMenuPrompt(ctx: MenuContext): {
     "Hãy lên thực đơn cho ĐÚNG các bữa sau (mỗi bữa một món chính phù hợp):",
     slotsText,
     "",
+    catalogReferenceText(ctx),
     "Trả về JSON theo đúng cấu trúc đã nêu, mỗi phần tử meals ứng với một bữa ở trên.",
   ]
     .filter((l) => l !== "")
     .join("\n");
 
   return { system, user };
+}
+
+/**
+ * Đoạn "Món tham khảo" chèn vào prompt: gợi ý các món Việt quen thuộc (đã lọc
+ * theo dị ứng/kiêng của gia đình) + vài mâm mẫu, để AI bám sát ẩm thực thật.
+ * Trả về "" nếu không có tham chiếu.
+ */
+function catalogReferenceText(ctx: MenuContext): string {
+  const ref = ctx.catalogReference;
+  if (!ref || (ref.dishNames.length === 0 && ref.setMenus.length === 0)) {
+    return "";
+  }
+  const lines: string[] = [
+    "Món Việt tham khảo (gợi ý phong cách, KHÔNG bắt buộc chọn nguyên văn; có thể",
+    "biến tấu cho hợp khẩu vị/kho thực phẩm; các món này đã hợp dị ứng & kiêng khem):",
+  ];
+  if (ref.dishNames.length) {
+    lines.push("  - " + ref.dishNames.join(", "));
+  }
+  if (ref.setMenus.length) {
+    lines.push("Mâm cơm mẫu tham khảo:");
+    for (const m of ref.setMenus) {
+      lines.push(`  - ${m.name}: ${m.dishNames.join(", ")}`);
+    }
+  }
+  lines.push("");
+  return lines.join("\n");
 }
