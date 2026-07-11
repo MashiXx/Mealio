@@ -17,12 +17,12 @@ datasource db {
 // ------------------------------------------------------------------
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
+  id           String   @id @default(cuid())
+  email        String   @unique
   name         String?
   passwordHash String?
   image        String?
-  createdAt    DateTime  @default(now())
+  createdAt    DateTime @default(now())
 
   familyId String?
   family   Family? @relation(fields: [familyId], references: [id], onDelete: SetNull)
@@ -75,17 +75,17 @@ model Family {
   name      String
   createdAt DateTime @default(now())
 
-  users        User[]
-  members      FamilyMember[]
-  profile      EatingProfile?
-  aiSettings   AISettings?
-  ingredients  Ingredient[]   @relation("FamilyIngredients")
-  pantryItems  PantryItem[]
-  recipes      Recipe[]
-  mealPlans    MealPlan[]
-  plannedMeals PlannedMeal[]
-  history      MealHistory[]
-  shoppingLists ShoppingList[]
+  users          User[]
+  members        FamilyMember[]
+  profile        EatingProfile?
+  aiSettings     AISettings?
+  ingredients    Ingredient[]    @relation("FamilyIngredients")
+  pantryItems    PantryItem[]
+  recipes        Recipe[]
+  mealPlans      MealPlan[]
+  plannedMeals   PlannedMeal[]
+  history        MealHistory[]
+  shoppingLists  ShoppingList[]
   generationJobs GenerationJob[]
 }
 
@@ -95,7 +95,7 @@ model FamilyMember {
   family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
   name                String
-  image               String?  // đường dẫn avatar (vd: /uploads/<uuid>.jpg)
+  image               String? // đường dẫn avatar (vd: /uploads/<uuid>.jpg)
   ageGroup            AgeGroup @default(ADULT)
   allergies           String[] @default([])
   dietaryRestrictions String[] @default([])
@@ -197,10 +197,10 @@ model PantryItem {
   ingredientId String
   ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
 
-  quantity Float    @default(1)
-  unit     String   @default("phần")
+  quantity  Float     @default(1)
+  unit      String    @default("phần")
   expiresAt DateTime?
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime  @updatedAt
 
   @@index([familyId])
 }
@@ -304,7 +304,7 @@ model MealHistory {
   plannedMeal   PlannedMeal? @relation(fields: [plannedMealId], references: [id], onDelete: SetNull)
 
   recipeId String
-  recipe   Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 
   cookedAt DateTime @default(now())
   rating   Rating   @default(NEUTRAL)
@@ -327,14 +327,14 @@ model ShoppingList {
   familyId String
   family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
+  createdAt DateTime       @default(now())
   items     ShoppingItem[]
 
   @@index([familyId])
 }
 
 model ShoppingItem {
-  id             String @id @default(cuid())
+  id             String       @id @default(cuid())
   shoppingListId String
   shoppingList   ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
 
@@ -357,10 +357,10 @@ model GenerationJob {
   familyId String
   family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
-  date      DateTime   // ngày mục tiêu (midnight)
+  date      DateTime // ngày mục tiêu (midnight)
   mealTypes MealType[] // các bữa cần tạo
   status    JobStatus  @default(PENDING)
-  error     String?    // lý do nếu FAILED
+  error     String? // lý do nếu FAILED
 
   createdAt  DateTime  @default(now())
   startedAt  DateTime?
@@ -374,4 +374,91 @@ enum JobStatus {
   RUNNING
   DONE
   FAILED
+}
+
+// ------------------------------------------------------------------
+// Kho món ăn dùng chung (catalog) — TOÀN CỤC, không gắn familyId.
+// Nguồn chân lý là src/data/catalog/*; DB được seed từ đó (prisma/seed.ts).
+// Dùng để gợi ý/lọc món cho mọi gia đình và tham chiếu cho AI.
+// ------------------------------------------------------------------
+
+model CatalogDish {
+  id      String   @id @default(cuid())
+  slug    String   @unique
+  name    String
+  aliases String[] @default([])
+
+  dishRole    DishRole
+  region      CuisineRegion @default(KHONG_CO_KHAU_VI)
+  mealTypes   MealType[]    @default([])
+  servings    Int           @default(4)
+  cookMinutes Int           @default(30)
+  difficulty  Difficulty    @default(EASY)
+  budgetLevel BudgetLevel   @default(MEDIUM)
+
+  steps           String[] @default([])
+  // [{ name, quantity, unit }] — không nối Ingredient per-family (dữ liệu dùng chung).
+  ingredients     Json
+  nutritionLabels String[] @default([])
+  // nhãn lọc an toàn/khẩu vị: chua-hai-san, chua-dau-phong, chay...
+  tags            String[] @default([])
+  notes           String?
+
+  imageUrl    String? // đường dẫn nội bộ, vd /dishes/thit-kho-tau.jpg
+  imageCredit String? // ghi công nguồn ảnh + giấy phép
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  setMenuItems CatalogSetMenuItem[]
+
+  @@index([dishRole])
+  @@index([region])
+}
+
+enum DishRole {
+  MON_MAN // kho, rán, nướng, hấp (đạm chính)
+  MON_XAO // xào
+  CANH_SUP // canh, súp, riêu
+  RAU_LUOC // rau luộc, nộm/gỏi, salad
+  LAU // lẩu
+  COM_BUN_PHO // cơm, bún, phở, xôi, mì, cháo
+  MON_CUON // các món cuốn
+  TRANG_MIENG // tráng miệng, chè, trái cây
+  DO_CHUA // dưa, cà, đồ chua ăn kèm
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model CatalogSetMenu {
+  id        String        @id @default(cuid())
+  slug      String        @unique
+  name      String
+  occasion  String // com-ngay-thuong, cuoi-tuan, dai-khach, chay, tet...
+  region    CuisineRegion @default(KHONG_CO_KHAU_VI)
+  servings  Int           @default(4)
+  note      String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  items CatalogSetMenuItem[]
+}
+
+model CatalogSetMenuItem {
+  id        String         @id @default(cuid())
+  setMenuId String
+  setMenu   CatalogSetMenu @relation(fields: [setMenuId], references: [id], onDelete: Cascade)
+
+  dishId String
+  dish   CatalogDish @relation(fields: [dishId], references: [id], onDelete: Cascade)
+
+  position Int @default(0) // thứ tự món trong mâm
+
+  @@unique([setMenuId, dishId])
+  @@index([setMenuId])
+  @@index([dishId])
 }
