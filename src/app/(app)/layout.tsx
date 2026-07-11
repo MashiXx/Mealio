@@ -25,6 +25,9 @@ export default async function AppLayout({
             <Link href="/menu/new" className="text-zinc-600 hover:text-zinc-900">
               Tạo thực đơn
             </Link>
+            <Link href="/catalog" className="text-zinc-600 hover:text-zinc-900">
+              Kho món
+            </Link>
             <Link
               href="/settings/members"
               className="text-zinc-600 hover:text-zinc-900"
