@@ -220,7 +220,7 @@ Expected log: dòng `prisma migrate deploy` áp dụng các migration (init, add
 
 - [ ] **Step 3: Gọi thử một route (terminal khác)**
 
-Run: `curl -s: -o /dev/null -w "%{http_code}\n" http://localhost:3000/login`
+Run: `curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/login`
 Expected: `200` (trang đăng nhập render server-side, không cần AI/Ollama).
 
 - [ ] **Step 4: Dọn dẹp**
