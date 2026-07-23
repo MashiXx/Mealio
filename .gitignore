@@ -45,3 +45,6 @@ next-env.d.ts
 
 # Dự án dùng yarn — chặn package-lock.json sinh bởi npm/npx
 package-lock.json
+
+# SDD scratch
+.superpowers/
