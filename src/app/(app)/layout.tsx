@@ -28,6 +28,9 @@ export default async function AppLayout({
             <Link href="/catalog" className="text-zinc-600 hover:text-zinc-900">
               Kho món
             </Link>
+            <Link href="/history" className="text-zinc-600 hover:text-zinc-900">
+              Lịch sử
+            </Link>
             <Link
               href="/settings/members"
               className="text-zinc-600 hover:text-zinc-900"
