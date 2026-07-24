@@ -2,9 +2,17 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireFamily } from "@/lib/tenant";
 import { MEAL_TYPE_LABEL, DISH_ROLE_LABEL } from "@/lib/enums";
-import { getActiveJob, getRecentFailedJob, getQueuePosition } from "@/lib/jobs";
+import {
+  getActiveJob,
+  getRecentFailedJob,
+  getQueuePosition,
+  getActiveEditJobs,
+  getRecentFailedEditJobs,
+} from "@/lib/jobs";
 import { ackJobAction } from "@/lib/actions/menu";
+import { ackEditJobAction } from "@/lib/actions/edit";
 import { JobPoller } from "./JobPoller";
+import { MealCard, type MealView } from "./MealCard";
 
 const MEAL_RANK: Record<string, number> = {
   BREAKFAST: 0,
@@ -39,6 +47,9 @@ export default async function DashboardPage({
   // Vị trí hàng đợi chỉ có nghĩa khi job đang chờ (PENDING).
   const queuePos =
     activeJob?.status === "PENDING" ? await getQueuePosition(activeJob) : null;
+
+  const activeEditJobs = await getActiveEditJobs(familyId);
+  const failedEditJobs = await getRecentFailedEditJobs(familyId);
 
   const [family, aiSettings, meals] = await Promise.all([
     prisma.family.findUnique({
@@ -174,6 +185,32 @@ export default async function DashboardPage({
         </div>
       )}
 
+      {/* Còn edit job đang chạy: refresh định kỳ tới khi xong. */}
+      {activeEditJobs.length > 0 && <JobPoller intervalMs={2500} />}
+
+      {failedEditJobs.length > 0 && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <p className="font-medium">Một số chỉnh sửa mâm thất bại.</p>
+          {failedEditJobs.map((j) => (
+            <div
+              key={j.id}
+              className="mt-2 flex items-center justify-between gap-3"
+            >
+              <span className="text-red-600">{j.error}</span>
+              <form action={ackEditJobAction}>
+                <input type="hidden" name="jobId" value={j.id} />
+                <button
+                  type="submit"
+                  className="rounded-lg border border-red-300 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-100"
+                >
+                  Bỏ qua
+                </button>
+              </form>
+            </div>
+          ))}
+        </div>
+      )}
+
       {days.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-10 text-center">
           <p className="text-zinc-500">Chưa có thực đơn nào sắp tới.</p>
@@ -200,71 +237,48 @@ export default async function DashboardPage({
               </h2>
               <div className="space-y-3">
                 {byDay.get(key)!.map((meal) => {
-                  const totalMinutes = meal.dishes.reduce(
-                    (max, d) => Math.max(max, d.recipe.cookMinutes),
-                    0,
+                  const view: MealView = {
+                    id: meal.id,
+                    mealTypeLabel: MEAL_TYPE_LABEL[meal.mealType] ?? meal.mealType,
+                    servings: meal.servings,
+                    totalMinutes: meal.dishes.reduce(
+                      (max, d) => Math.max(max, d.recipe.cookMinutes),
+                      0,
+                    ),
+                    chatHistory: Array.isArray(meal.chatHistory)
+                      ? (meal.chatHistory as MealView["chatHistory"])
+                      : [],
+                    dishes: meal.dishes.map((d) => ({
+                      id: d.id,
+                      roleLabel: DISH_ROLE_LABEL[d.dishRole] ?? d.dishRole,
+                      name: d.recipe.name,
+                      cookMinutes: d.recipe.cookMinutes,
+                      nutritionLabels: d.recipe.nutritionLabels,
+                      ingredients: d.recipe.ingredients.map(
+                        (ri) => `${ri.ingredient.name} (${ri.quantity} ${ri.unit})`,
+                      ),
+                      steps: d.recipe.steps,
+                      chatHistory: Array.isArray(d.chatHistory)
+                        ? (d.chatHistory as MealView["chatHistory"])
+                        : [],
+                    })),
+                  };
+                  const jobsForMeal = activeEditJobs.filter(
+                    (j) => j.plannedMealId === meal.id,
+                  );
+                  const busyDishIds = jobsForMeal
+                    .filter((j) => j.mealDishId)
+                    .map((j) => j.mealDishId as string);
+                  const mealBusy = jobsForMeal.some(
+                    (j) => j.scope === "MEAL" || j.scope === "ADD",
                   );
                   return (
-                    <article
+                    <MealCard
                       key={meal.id}
-                      className="rounded-xl border border-zinc-100 bg-zinc-50 p-4"
-                    >
-                      <div className="mb-3 flex items-center gap-2">
-                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                          {MEAL_TYPE_LABEL[meal.mealType] ?? meal.mealType}
-                        </span>
-                        <span className="text-xs text-zinc-500">
-                          {meal.servings} người · {meal.dishes.length} món
-                          {totalMinutes > 0 && ` · ~${totalMinutes} phút`}
-                        </span>
-                      </div>
-                      <div className="space-y-3">
-                        {meal.dishes.map((dish) => {
-                          const recipe = dish.recipe;
-                          return (
-                            <div
-                              key={dish.id}
-                              className="rounded-lg border border-zinc-200 bg-white p-3"
-                            >
-                              <div className="mb-1 flex flex-wrap items-center gap-2">
-                                <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] font-medium text-zinc-500">
-                                  {DISH_ROLE_LABEL[dish.dishRole] ?? dish.dishRole}
-                                </span>
-                                <h4 className="font-semibold">{recipe.name}</h4>
-                              </div>
-                              <p className="text-xs text-zinc-500">
-                                {recipe.cookMinutes} phút
-                                {recipe.nutritionLabels.length > 0 &&
-                                  " · " + recipe.nutritionLabels.join(", ")}
-                              </p>
-                              {recipe.ingredients.length > 0 && (
-                                <p className="mt-2 text-sm text-zinc-600">
-                                  <span className="font-medium">Nguyên liệu: </span>
-                                  {recipe.ingredients
-                                    .map(
-                                      (ri) =>
-                                        `${ri.ingredient.name} (${ri.quantity} ${ri.unit})`,
-                                    )
-                                    .join(", ")}
-                                </p>
-                              )}
-                              {recipe.steps.length > 0 && (
-                                <details className="mt-2">
-                                  <summary className="cursor-pointer text-sm font-medium text-emerald-700">
-                                    Cách làm ({recipe.steps.length} bước)
-                                  </summary>
-                                  <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-zinc-700">
-                                    {recipe.steps.map((s, i) => (
-                                      <li key={i}>{s}</li>
-                                    ))}
-                                  </ol>
-                                </details>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </article>
+                      meal={view}
+                      busyDishIds={busyDishIds}
+                      mealBusy={mealBusy}
+                    />
                   );
                 })}
               </div>
