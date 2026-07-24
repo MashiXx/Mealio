@@ -43,6 +43,12 @@ export type AiMenu = z.infer<typeof aiMenuSchema>;
 export type AiMeal = z.infer<typeof aiMealSchema>;
 export type AiDish = z.infer<typeof aiDishSchema>;
 
+// Kết quả AI trả về khi SỬA mâm: danh sách món (1 món cho DISH/ADD, cả mâm cho MEAL).
+export const aiEditSchema = z.object({
+  dishes: z.array(aiDishSchema).min(1),
+});
+export type AiEditResult = z.infer<typeof aiEditSchema>;
+
 // Kết quả nhận dạng thành viên từ ảnh. Chỉ nhóm tuổi là suy đoán tương đối
 // tin cậy; suggestedLikes/notes là gợi ý mềm theo độ tuổi để người dùng tham khảo.
 export const memberRecognitionSchema = z.object({
@@ -79,6 +85,17 @@ export function parseMenuJson(text: string): AiMenu {
   if (!result.success) {
     throw new Error(
       "JSON từ AI không đúng cấu trúc thực đơn: " + result.error.message,
+    );
+  }
+  return result.data;
+}
+
+/** Validate JSON kết quả sửa mâm theo aiEditSchema. */
+export function parseEditJson(text: string): AiEditResult {
+  const result = aiEditSchema.safeParse(extractJson(text));
+  if (!result.success) {
+    throw new Error(
+      "JSON sửa mâm không đúng cấu trúc: " + result.error.message,
     );
   }
   return result.data;

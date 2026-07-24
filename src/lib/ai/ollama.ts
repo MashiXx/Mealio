@@ -1,14 +1,17 @@
 import type {
   AIProvider,
   MenuContext,
+  EditContext,
   MemberImage,
   TestConnectionResult,
 } from "./types";
-import { buildMenuPrompt, buildRecognitionPrompt } from "./prompt";
+import { buildMenuPrompt, buildEditPrompt, buildRecognitionPrompt } from "./prompt";
 import {
   parseMenuJson,
+  parseEditJson,
   parseRecognitionJson,
   type AiMenu,
+  type AiEditResult,
   type MemberRecognition,
 } from "./schema";
 import { basicAuthHeader, type BasicAuth } from "./openai-client";
@@ -110,6 +113,15 @@ export class OllamaProvider implements AIProvider {
       { role: "user", content: user },
     ]);
     return parseMenuJson(content);
+  }
+
+  async editMeal(ctx: EditContext): Promise<AiEditResult> {
+    const { system, user } = buildEditPrompt(ctx);
+    const content = await this.chat([
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ]);
+    return parseEditJson(content);
   }
 
   async recognizeMember(image: MemberImage): Promise<MemberRecognition> {

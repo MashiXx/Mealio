@@ -2,14 +2,17 @@ import Anthropic from "@anthropic-ai/sdk";
 import type {
   AIProvider,
   MenuContext,
+  EditContext,
   MemberImage,
   TestConnectionResult,
 } from "./types";
-import { buildMenuPrompt, buildRecognitionPrompt } from "./prompt";
+import { buildMenuPrompt, buildEditPrompt, buildRecognitionPrompt } from "./prompt";
 import {
   parseMenuJson,
+  parseEditJson,
   parseRecognitionJson,
   type AiMenu,
+  type AiEditResult,
   type MemberRecognition,
 } from "./schema";
 
@@ -49,6 +52,17 @@ export class AnthropicProvider implements AIProvider {
       messages: [{ role: "user", content: user }],
     });
     return parseMenuJson(this.textOf(msg));
+  }
+
+  async editMeal(ctx: EditContext): Promise<AiEditResult> {
+    const { system, user } = buildEditPrompt(ctx);
+    const msg = await this.client().messages.create({
+      model: this.model,
+      max_tokens: 4096,
+      system,
+      messages: [{ role: "user", content: user }],
+    });
+    return parseEditJson(this.textOf(msg));
   }
 
   async recognizeMember(image: MemberImage): Promise<MemberRecognition> {

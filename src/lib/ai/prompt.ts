@@ -1,4 +1,4 @@
-import type { MenuContext } from "./types";
+import type { MenuContext, EditContext, CatalogReference } from "./types";
 import { DISH_ROLE_LABEL } from "../enums";
 
 // Dựng prompt cho AI từ hồ sơ gia đình + kho thực phẩm + lịch sử.
@@ -136,7 +136,7 @@ export function buildMenuPrompt(ctx: MenuContext): {
     "Hãy lên MÂM CƠM cho ĐÚNG các bữa sau — mỗi bữa đúng số món và vai trò ghi kèm:",
     slotsText,
     "",
-    catalogReferenceText(ctx),
+    catalogReferenceText(ctx.catalogReference),
     "Trả về JSON theo đúng cấu trúc: mỗi phần tử meals ứng một bữa, dishes có đúng số món & vai trò yêu cầu.",
   ]
     .filter((l) => l !== "")
@@ -150,8 +150,7 @@ export function buildMenuPrompt(ctx: MenuContext): {
  * theo dị ứng/kiêng của gia đình) + vài mâm mẫu, để AI bám sát ẩm thực thật.
  * Trả về "" nếu không có tham chiếu.
  */
-function catalogReferenceText(ctx: MenuContext): string {
-  const ref = ctx.catalogReference;
+function catalogReferenceText(ref: CatalogReference | undefined): string {
   if (!ref || (ref.dishNames.length === 0 && ref.setMenus.length === 0)) {
     return "";
   }
@@ -170,4 +169,84 @@ function catalogReferenceText(ctx: MenuContext): string {
   }
   lines.push("");
   return lines.join("\n");
+}
+
+// Prompt cho việc SỬA mâm: nêu trạng thái mâm hiện tại + lịch sử chat + lệnh mới.
+export function buildEditPrompt(ctx: EditContext): {
+  system: string;
+  user: string;
+} {
+  const scopeRule =
+    ctx.scope === "DISH"
+      ? `Chỉ thay ĐÚNG 1 MÓN có vai trò "${DISH_ROLE_LABEL[ctx.targetRole ?? "MON_MAN"]}". Trả về đúng 1 phần tử trong dishes, khác hẳn món hiện tại, vẫn hợp vai trò đó.`
+      : ctx.scope === "ADD"
+        ? "Đề xuất ĐÚNG 1 MÓN MỚI bổ sung cho mâm (không trùng món đang có, cân bằng thêm cho mâm). Trả về đúng 1 phần tử trong dishes."
+        : "Viết lại DANH SÁCH ĐẦY ĐỦ các món của mâm sau khi áp yêu cầu (có thể thêm/bớt/đổi món). Trả về toàn bộ dishes của mâm.";
+
+  const system = [
+    "Bạn vừa là CHUYÊN GIA DINH DƯỠNG, vừa là ĐẦU BẾP gia đình người Việt giàu kinh nghiệm.",
+    "Nhiệm vụ: CHỈNH SỬA mâm cơm theo yêu cầu người dùng, giữ cân bằng dinh dưỡng và đúng ẩm thực Việt.",
+    "QUY TẮC BẮT BUỘC:",
+    "- TUYỆT ĐỐI không dùng nguyên liệu gây dị ứng; tôn trọng kiêng khem.",
+    "- Không lặp lại món đã ăn gần đây; tránh trùng nguyên liệu chính với các món còn lại trong mâm.",
+    "- Gắn nhãn dinh dưỡng cho từng món; công thức bằng tiếng Việt.",
+    `- ${scopeRule}`,
+    "CHỈ trả về JSON, KHÔNG giải thích, KHÔNG markdown.",
+    `Cấu trúc JSON: {"dishes":[{"name":"string","dishRole":"MON_MAN|MON_XAO|CANH_SUP|RAU_LUOC|LAU|COM_BUN_PHO|MON_CUON|TRANG_MIENG|DO_CHUA","servings":number,"cookMinutes":number,"steps":["string"],"nutritionLabels":["string"],"ingredients":[{"name":"string","quantity":number,"unit":"string"}]}]}`,
+  ].join("\n");
+
+  const p = ctx.profile;
+  const membersText =
+    ctx.members
+      .map((m, i) => {
+        const parts = [`  ${i + 1}. ${m.name} (${m.ageGroup})`];
+        if (m.allergies.length) parts.push(`dị ứng: ${m.allergies.join(", ")}`);
+        if (m.dietaryRestrictions.length)
+          parts.push(`kiêng: ${m.dietaryRestrictions.join(", ")}`);
+        if (m.dislikes.length) parts.push(`ghét: ${m.dislikes.join(", ")}`);
+        return parts.join(" — ");
+      })
+      .join("\n") || "  (chưa có thông tin thành viên)";
+
+  const currentText = ctx.currentDishes
+    .map(
+      (d) =>
+        `  - [${DISH_ROLE_LABEL[d.dishRole] ?? d.dishRole}] ${d.name} — nguyên liệu: ${d.ingredientNames.join(", ") || "?"}`,
+    )
+    .join("\n");
+
+  const historyText = ctx.history.length
+    ? ctx.history
+        .map(
+          (t) => `  ${t.role === "user" ? "Người dùng" : "Trợ lý"}: ${t.content}`,
+        )
+        .join("\n")
+    : "";
+
+  const user = [
+    `Bữa: ${MEALTYPE_LABEL[ctx.mealType] ?? ctx.mealType} · ${ctx.servings} người`,
+    `Khẩu vị vùng: ${REGION_LABEL[p.cuisineRegion] ?? p.cuisineRegion} · độ cay: ${SPICE_LABEL[p.spiceLevel] ?? p.spiceLevel} · ngân sách: ${BUDGET_LABEL[p.budgetLevel] ?? p.budgetLevel}`,
+    "",
+    "Thành viên & hạn chế:",
+    membersText,
+    "",
+    "Mâm hiện tại:",
+    currentText || "  (mâm trống)",
+    "",
+    historyText ? "Lịch sử trao đổi (cũ → mới):" : "",
+    historyText,
+    `YÊU CẦU MỚI: ${ctx.instruction}`,
+    "",
+    "Món đã ăn gần đây (TRÁNH lặp):",
+    ctx.recentRecipeNames.length
+      ? ctx.recentRecipeNames.map((n) => `  - ${n}`).join("\n")
+      : "  (chưa có)",
+    "",
+    catalogReferenceText(ctx.catalogReference),
+    "Trả về JSON đúng cấu trúc đã nêu.",
+  ]
+    .filter((l) => l !== "")
+    .join("\n");
+
+  return { system, user };
 }

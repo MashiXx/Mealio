@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseMenuJson } from "./schema";
+import { parseMenuJson, parseEditJson } from "./schema";
 
 describe("parseMenuJson (nhiều món)", () => {
   it("parse mâm 2 món có dishRole", () => {
@@ -25,5 +25,21 @@ describe("parseMenuJson (nhiều món)", () => {
       meals: [{ date: "2026-07-25", mealType: "LUNCH", dishes: [{ name: "X", servings: 2, cookMinutes: 10, steps: [], nutritionLabels: [], ingredients: [] }] }],
     });
     expect(() => parseMenuJson(json)).toThrow();
+  });
+});
+
+describe("parseEditJson", () => {
+  it("parse danh sách dishes", () => {
+    const json = JSON.stringify({
+      dishes: [
+        { name: "Canh chua cá", dishRole: "CANH_SUP", servings: 4, cookMinutes: 25, steps: ["nấu"], nutritionLabels: ["nhiều rau"], ingredients: [{ name: "cá", quantity: 300, unit: "g" }] },
+      ],
+    });
+    const r = parseEditJson(json);
+    expect(r.dishes[0].name).toBe("Canh chua cá");
+  });
+
+  it("từ chối khi dishes rỗng", () => {
+    expect(() => parseEditJson(JSON.stringify({ dishes: [] }))).toThrow();
   });
 });
