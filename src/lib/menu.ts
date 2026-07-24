@@ -109,6 +109,22 @@ export async function saveMenu(
         });
       }
 
+      const mealDate = new Date(`${meal.date}T00:00:00`);
+
+      // latest-wins: xoá mâm cũ của đúng (ngày, bữa) trước khi tạo mới.
+      await tx.plannedMeal.deleteMany({
+        where: { familyId, date: mealDate, mealType: meal.mealType },
+      });
+
+      const planned = await tx.plannedMeal.create({
+        data: {
+          familyId,
+          date: mealDate,
+          mealType: meal.mealType,
+          servings: r.servings,
+        },
+      });
+
       const recipe = await tx.recipe.create({
         data: {
           familyId,
@@ -122,13 +138,12 @@ export async function saveMenu(
         },
       });
 
-      const planned = await tx.plannedMeal.create({
+      await tx.mealDish.create({
         data: {
-          familyId,
-          date: new Date(`${meal.date}T00:00:00`),
-          mealType: meal.mealType,
+          plannedMealId: planned.id,
           recipeId: recipe.id,
-          servings: r.servings,
+          dishRole: "MON_MAN",
+          position: 0,
         },
       });
 

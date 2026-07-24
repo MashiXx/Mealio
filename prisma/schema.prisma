@@ -222,9 +222,9 @@ model Recipe {
   nutritionLabels String[]     @default([]) // nhiều rau, ít dầu mỡ, thanh đạm...
   createdAt       DateTime     @default(now())
 
-  ingredients  RecipeIngredient[]
-  plannedMeals PlannedMeal[]
-  history      MealHistory[]
+  ingredients RecipeIngredient[]
+  mealDishes  MealDish[]
+  history     MealHistory[]
 
   @@index([familyId])
 }
@@ -276,13 +276,27 @@ model PlannedMeal {
 
   date     DateTime
   mealType MealType
-  recipeId String
-  recipe   Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  servings Int      @default(4)
+  servings Int      @default(4) // số người ăn bữa này
 
+  dishes  MealDish[]
   history MealHistory[]
 
+  @@unique([familyId, date, mealType])
   @@index([familyId, date])
+}
+
+model MealDish {
+  id            String      @id @default(cuid())
+  plannedMealId String
+  plannedMeal   PlannedMeal @relation(fields: [plannedMealId], references: [id], onDelete: Cascade)
+
+  recipeId String
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  dishRole DishRole @default(MON_MAN)
+  position Int      @default(0)
+
+  @@index([plannedMealId])
 }
 
 enum MealType {
@@ -361,6 +375,7 @@ model GenerationJob {
   mealTypes MealType[] // các bữa cần tạo
   status    JobStatus  @default(PENDING)
   error     String? // lý do nếu FAILED
+  dishCount Int? // số món/bữa chính người dùng chọn; null = tự động
 
   createdAt  DateTime  @default(now())
   startedAt  DateTime?

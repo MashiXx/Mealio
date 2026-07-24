@@ -49,7 +49,14 @@ export default async function DashboardPage({
     prisma.plannedMeal.findMany({
       where: { familyId, date: { gte: startOfToday } },
       orderBy: { date: "asc" },
-      include: { recipe: { include: { ingredients: { include: { ingredient: true } } } } },
+      include: {
+        dishes: {
+          orderBy: { position: "asc" },
+          include: {
+            recipe: { include: { ingredients: { include: { ingredient: true } } } },
+          },
+        },
+      },
       take: 60,
     }),
   ]);
@@ -192,47 +199,52 @@ export default async function DashboardPage({
                 {formatDay(key)}
               </h2>
               <div className="space-y-3">
-                {byDay.get(key)!.map((meal) => (
-                  <article
-                    key={meal.id}
-                    className="rounded-xl border border-zinc-100 bg-zinc-50 p-4"
-                  >
-                    <div className="mb-1 flex items-center gap-2">
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                        {MEAL_TYPE_LABEL[meal.mealType] ?? meal.mealType}
-                      </span>
-                      <h3 className="font-semibold">{meal.recipe.name}</h3>
-                    </div>
-                    <p className="text-xs text-zinc-500">
-                      {meal.servings} phần · {meal.recipe.cookMinutes} phút
-                      {meal.recipe.nutritionLabels.length > 0 &&
-                        " · " + meal.recipe.nutritionLabels.join(", ")}
-                    </p>
-                    {meal.recipe.ingredients.length > 0 && (
-                      <p className="mt-2 text-sm text-zinc-600">
-                        <span className="font-medium">Nguyên liệu: </span>
-                        {meal.recipe.ingredients
-                          .map(
-                            (ri) =>
-                              `${ri.ingredient.name} (${ri.quantity} ${ri.unit})`,
-                          )
-                          .join(", ")}
+                {byDay.get(key)!.map((meal) => {
+                  const dish = meal.dishes[0];
+                  if (!dish) return null;
+                  const recipe = dish.recipe;
+                  return (
+                    <article
+                      key={meal.id}
+                      className="rounded-xl border border-zinc-100 bg-zinc-50 p-4"
+                    >
+                      <div className="mb-1 flex items-center gap-2">
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                          {MEAL_TYPE_LABEL[meal.mealType] ?? meal.mealType}
+                        </span>
+                        <h3 className="font-semibold">{recipe.name}</h3>
+                      </div>
+                      <p className="text-xs text-zinc-500">
+                        {meal.servings} phần · {recipe.cookMinutes} phút
+                        {recipe.nutritionLabels.length > 0 &&
+                          " · " + recipe.nutritionLabels.join(", ")}
                       </p>
-                    )}
-                    {meal.recipe.steps.length > 0 && (
-                      <details className="mt-2">
-                        <summary className="cursor-pointer text-sm font-medium text-emerald-700">
-                          Cách làm ({meal.recipe.steps.length} bước)
-                        </summary>
-                        <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-zinc-700">
-                          {meal.recipe.steps.map((s, i) => (
-                            <li key={i}>{s}</li>
-                          ))}
-                        </ol>
-                      </details>
-                    )}
-                  </article>
-                ))}
+                      {recipe.ingredients.length > 0 && (
+                        <p className="mt-2 text-sm text-zinc-600">
+                          <span className="font-medium">Nguyên liệu: </span>
+                          {recipe.ingredients
+                            .map(
+                              (ri) =>
+                                `${ri.ingredient.name} (${ri.quantity} ${ri.unit})`,
+                            )
+                            .join(", ")}
+                        </p>
+                      )}
+                      {recipe.steps.length > 0 && (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-sm font-medium text-emerald-700">
+                            Cách làm ({recipe.steps.length} bước)
+                          </summary>
+                          <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-zinc-700">
+                            {recipe.steps.map((s, i) => (
+                              <li key={i}>{s}</li>
+                            ))}
+                          </ol>
+                        </details>
+                      )}
+                    </article>
+                  );
+                })}
               </div>
             </section>
           ))}
