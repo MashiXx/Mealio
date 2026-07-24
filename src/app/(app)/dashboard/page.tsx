@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireFamily } from "@/lib/tenant";
-import { MEAL_TYPE_LABEL } from "@/lib/enums";
+import { MEAL_TYPE_LABEL, DISH_ROLE_LABEL } from "@/lib/enums";
 import { getActiveJob, getRecentFailedJob, getQueuePosition } from "@/lib/jobs";
 import { ackJobAction } from "@/lib/actions/menu";
 import { JobPoller } from "./JobPoller";
@@ -200,48 +200,70 @@ export default async function DashboardPage({
               </h2>
               <div className="space-y-3">
                 {byDay.get(key)!.map((meal) => {
-                  const dish = meal.dishes[0];
-                  if (!dish) return null;
-                  const recipe = dish.recipe;
+                  const totalMinutes = meal.dishes.reduce(
+                    (max, d) => Math.max(max, d.recipe.cookMinutes),
+                    0,
+                  );
                   return (
                     <article
                       key={meal.id}
                       className="rounded-xl border border-zinc-100 bg-zinc-50 p-4"
                     >
-                      <div className="mb-1 flex items-center gap-2">
+                      <div className="mb-3 flex items-center gap-2">
                         <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
                           {MEAL_TYPE_LABEL[meal.mealType] ?? meal.mealType}
                         </span>
-                        <h3 className="font-semibold">{recipe.name}</h3>
+                        <span className="text-xs text-zinc-500">
+                          {meal.servings} người · {meal.dishes.length} món
+                          {totalMinutes > 0 && ` · ~${totalMinutes} phút`}
+                        </span>
                       </div>
-                      <p className="text-xs text-zinc-500">
-                        {meal.servings} phần · {recipe.cookMinutes} phút
-                        {recipe.nutritionLabels.length > 0 &&
-                          " · " + recipe.nutritionLabels.join(", ")}
-                      </p>
-                      {recipe.ingredients.length > 0 && (
-                        <p className="mt-2 text-sm text-zinc-600">
-                          <span className="font-medium">Nguyên liệu: </span>
-                          {recipe.ingredients
-                            .map(
-                              (ri) =>
-                                `${ri.ingredient.name} (${ri.quantity} ${ri.unit})`,
-                            )
-                            .join(", ")}
-                        </p>
-                      )}
-                      {recipe.steps.length > 0 && (
-                        <details className="mt-2">
-                          <summary className="cursor-pointer text-sm font-medium text-emerald-700">
-                            Cách làm ({recipe.steps.length} bước)
-                          </summary>
-                          <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-zinc-700">
-                            {recipe.steps.map((s, i) => (
-                              <li key={i}>{s}</li>
-                            ))}
-                          </ol>
-                        </details>
-                      )}
+                      <div className="space-y-3">
+                        {meal.dishes.map((dish) => {
+                          const recipe = dish.recipe;
+                          return (
+                            <div
+                              key={dish.id}
+                              className="rounded-lg border border-zinc-200 bg-white p-3"
+                            >
+                              <div className="mb-1 flex flex-wrap items-center gap-2">
+                                <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] font-medium text-zinc-500">
+                                  {DISH_ROLE_LABEL[dish.dishRole] ?? dish.dishRole}
+                                </span>
+                                <h4 className="font-semibold">{recipe.name}</h4>
+                              </div>
+                              <p className="text-xs text-zinc-500">
+                                {recipe.cookMinutes} phút
+                                {recipe.nutritionLabels.length > 0 &&
+                                  " · " + recipe.nutritionLabels.join(", ")}
+                              </p>
+                              {recipe.ingredients.length > 0 && (
+                                <p className="mt-2 text-sm text-zinc-600">
+                                  <span className="font-medium">Nguyên liệu: </span>
+                                  {recipe.ingredients
+                                    .map(
+                                      (ri) =>
+                                        `${ri.ingredient.name} (${ri.quantity} ${ri.unit})`,
+                                    )
+                                    .join(", ")}
+                                </p>
+                              )}
+                              {recipe.steps.length > 0 && (
+                                <details className="mt-2">
+                                  <summary className="cursor-pointer text-sm font-medium text-emerald-700">
+                                    Cách làm ({recipe.steps.length} bước)
+                                  </summary>
+                                  <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-zinc-700">
+                                    {recipe.steps.map((s, i) => (
+                                      <li key={i}>{s}</li>
+                                    ))}
+                                  </ol>
+                                </details>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </article>
                   );
                 })}
