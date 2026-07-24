@@ -8,6 +8,7 @@ import {
   addDishAction,
   deleteDishAction,
 } from "@/lib/actions/edit";
+import { DishInfo } from "./DishInfo";
 
 type ChatTurn = { role: "user" | "assistant"; content: string };
 
@@ -141,37 +142,21 @@ export function MealCard({
               key={dish.id}
               className={`rounded-lg border border-zinc-200 bg-white p-3 ${busySet.has(dish.id) ? "opacity-60" : ""}`}
             >
-              <div className="mb-1 flex flex-wrap items-center gap-2">
-                <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] font-medium text-zinc-500">
-                  {dish.roleLabel}
-                </span>
-                <h4 className="font-semibold">{dish.name}</h4>
-                {busySet.has(dish.id) && (
+              <DishInfo
+                dish={{
+                  roleLabel: dish.roleLabel,
+                  name: dish.name,
+                  cookMinutes: dish.cookMinutes,
+                  nutritionLabels: dish.nutritionLabels,
+                  ingredients: dish.ingredients,
+                  steps: dish.steps,
+                }}
+              />
+              {busySet.has(dish.id) && (
+                <p className="mt-1 flex items-center gap-1 text-xs text-amber-600">
                   <span className="h-3 w-3 animate-spin rounded-full border-2 border-amber-300 border-t-amber-600" />
-                )}
-              </div>
-              <p className="text-xs text-zinc-500">
-                {dish.cookMinutes} phút
-                {dish.nutritionLabels.length > 0 &&
-                  " · " + dish.nutritionLabels.join(", ")}
-              </p>
-              {dish.ingredients.length > 0 && (
-                <p className="mt-2 text-sm text-zinc-600">
-                  <span className="font-medium">Nguyên liệu: </span>
-                  {dish.ingredients.join(", ")}
+                  đang cập nhật…
                 </p>
-              )}
-              {dish.steps.length > 0 && (
-                <details className="mt-2">
-                  <summary className="cursor-pointer text-sm font-medium text-emerald-700">
-                    Cách làm ({dish.steps.length} bước)
-                  </summary>
-                  <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-zinc-700">
-                    {dish.steps.map((s, i) => (
-                      <li key={i}>{s}</li>
-                    ))}
-                  </ol>
-                </details>
               )}
 
               {/* Nút thao tác nhanh */}
