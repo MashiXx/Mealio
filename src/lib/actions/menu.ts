@@ -36,6 +36,17 @@ export async function startGenerationAction(
     return { error: "Chọn ít nhất một bữa (sáng/trưa/tối)." };
   }
 
+  // "auto" hoặc rỗng -> null (server tự tính theo số người); ngược lại 1..5.
+  const rawCount = String(formData.get("dishCount") ?? "");
+  let dishCount: number | null = null;
+  if (rawCount && rawCount !== "auto") {
+    const n = parseInt(rawCount, 10);
+    if (!Number.isInteger(n) || n < 1 || n > 5) {
+      return { error: "Số món phải từ 1 đến 5." };
+    }
+    dishCount = n;
+  }
+
   // Chống trùng: đã có job đang chạy thì không tạo thêm.
   const active = await getActiveJob(familyId);
   if (active) {
@@ -48,6 +59,7 @@ export async function startGenerationAction(
       familyId,
       date: new Date(`${date}T00:00:00`), // midnight local
       mealTypes: selected,
+      dishCount,
       status: "PENDING",
     },
   });
