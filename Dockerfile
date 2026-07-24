@@ -22,6 +22,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 RUN yarn prisma generate
 RUN yarn build
+# Gom Prisma CLI + toàn bộ phụ thuộc runtime của nó (33 package) cho stage runner.
+RUN node scripts/collect-prisma-cli.mjs /prisma-cli/node_modules
 
 # ---- runner: image runtime gọn từ standalone ----
 FROM node:22-slim AS runner
@@ -42,11 +44,9 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Prisma runtime: client đã generate + schema/migrations + CLI + engine cho migrate deploy
+# Prisma runtime: client đã generate + schema/migrations + CLI (kèm đủ phụ thuộc) cho migrate deploy
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/node_modules/@prisma/engines ./node_modules/@prisma/engines
-COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
+COPY --from=builder /prisma-cli/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 
 COPY --chmod=755 docker-entrypoint.sh ./docker-entrypoint.sh
