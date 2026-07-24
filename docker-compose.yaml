@@ -13,7 +13,7 @@ services:
       # environment ưu tiên hơn env_file nên dòng này thắng.
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT:-5432}/${DB_NAME}?schema=public
     ports:
-      - "${APP_PORT:-3333}:3333"
+      - "${APP_PORT:-3000}:3000"
     extra_hosts:
       # Để app gọi được Ollama chạy trên máy host: http://host.docker.internal:11434
       - "host.docker.internal:host-gateway"
