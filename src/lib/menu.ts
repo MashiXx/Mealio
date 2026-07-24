@@ -1,6 +1,6 @@
 import { prisma } from "./db";
-import { normalizeIngredient } from "./normalize";
 import { buildCatalogReference } from "./catalog";
+import { createRecipeFromDish } from "./edit";
 import { planMealStructure } from "./meal-structure";
 import type { AiMenu } from "./ai/schema";
 import type { MealTypeStr, MenuContext, MenuMember, MenuProfile } from "./ai/types";
@@ -102,51 +102,12 @@ export async function saveMenu(
 
       let position = 0;
       for (const dish of meal.dishes) {
-        const recipeIngredients: {
-          ingredientId: string;
-          quantity: number;
-          unit: string;
-        }[] = [];
-
-        for (const ing of dish.ingredients) {
-          const normalized = normalizeIngredient(ing.name);
-          if (!normalized) continue;
-
-          const ingredient = await tx.ingredient.upsert({
-            where: { familyId_normalized: { familyId, normalized } },
-            create: {
-              familyId,
-              name: ing.name.trim(),
-              normalized,
-              defaultUnit: ing.unit,
-            },
-            update: {},
-          });
-
-          recipeIngredients.push({
-            ingredientId: ingredient.id,
-            quantity: ing.quantity,
-            unit: ing.unit,
-          });
-        }
-
-        const recipe = await tx.recipe.create({
-          data: {
-            familyId,
-            name: dish.name,
-            source: "AI",
-            servings: dish.servings,
-            cookMinutes: dish.cookMinutes,
-            steps: dish.steps,
-            nutritionLabels: dish.nutritionLabels,
-            ingredients: { create: recipeIngredients },
-          },
-        });
+        const recipeId = await createRecipeFromDish(tx, familyId, dish);
 
         await tx.mealDish.create({
           data: {
             plannedMealId: planned.id,
-            recipeId: recipe.id,
+            recipeId,
             dishRole: dish.dishRole,
             position: position++,
           },
