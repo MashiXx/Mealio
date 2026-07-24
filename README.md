@@ -20,6 +20,21 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Chạy bằng Docker Compose
+
+Compose chỉ dựng service `app`; Postgres là container có sẵn ở stack khác, app join vào network của nó.
+
+1. Copy `.env.example` thành `.env` rồi điền:
+   - `DB_NETWORK` — tên network mà container Postgres đang nằm trong đó:
+     `docker inspect -f '{{json .NetworkSettings.Networks}}' <ten-container-postgres>`
+   - `DB_HOST` — **tên container Postgres**, không phải `localhost`.
+   - `AUTH_SECRET`, `ENCRYPTION_KEY` — sinh theo hướng dẫn trong `.env.example`.
+2. `docker compose up -d --build`
+
+Entrypoint chạy `prisma migrate deploy` trước khi khởi động Next. Nếu DB chưa sẵn sàng, container sẽ thoát và `restart: unless-stopped` thử lại.
+
+Ollama chạy trên máy host thì điền endpoint là `http://host.docker.internal:11434` trong phần cài đặt AI.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

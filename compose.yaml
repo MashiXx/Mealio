@@ -1,0 +1,27 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mealio:latest
+    restart: unless-stopped
+    # Các biến giá trị thường: AUTH_SECRET, ENCRYPTION_KEY, AUTH_TRUST_HOST, MENU_GEN_CONCURRENCY.
+    env_file: .env
+    environment:
+      # Phải ghép ở đây chứ không lấy từ env_file: env_file truyền nguyên văn, không nội suy,
+      # nên DATABASE_URL trong .env sẽ vào container kèm dấu ${} và Prisma đọc không ra.
+      # environment ưu tiên hơn env_file nên dòng này thắng.
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT:-5432}/${DB_NAME}?schema=public
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    extra_hosts:
+      # Để app gọi được Ollama chạy trên máy host: http://host.docker.internal:11434
+      - "host.docker.internal:host-gateway"
+    networks:
+      - dbnet
+
+networks:
+  # Network sẵn có của stack Postgres; app chỉ join vào, không tự tạo.
+  dbnet:
+    external: true
+    name: ${DB_NETWORK}
