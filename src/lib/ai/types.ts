@@ -13,6 +13,17 @@ export interface MemberImage {
 
 export type MealTypeStr = "BREAKFAST" | "LUNCH" | "DINNER";
 
+export type DishRoleStr =
+  | "MON_MAN"
+  | "MON_XAO"
+  | "CANH_SUP"
+  | "RAU_LUOC"
+  | "LAU"
+  | "COM_BUN_PHO"
+  | "MON_CUON"
+  | "TRANG_MIENG"
+  | "DO_CHUA";
+
 export interface MenuSlot {
   date: string; // yyyy-mm-dd
   mealType: MealTypeStr;
