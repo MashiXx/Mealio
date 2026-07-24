@@ -32,10 +32,11 @@ export interface MenuSlot {
 
 export type EditScopeStr = "DISH" | "MEAL" | "ADD";
 
-export interface ChatTurn {
+// type (không phải interface) để có index signature ngầm -> gán được vào Prisma Json.
+export type ChatTurn = {
   role: "user" | "assistant";
   content: string;
-}
+};
 
 export interface EditDishView {
   name: string;
