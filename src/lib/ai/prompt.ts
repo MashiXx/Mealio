@@ -1,4 +1,5 @@
 import type { MenuContext } from "./types";
+import { DISH_ROLE_LABEL } from "../enums";
 
 // Dựng prompt cho AI từ hồ sơ gia đình + kho thực phẩm + lịch sử.
 // Trả về { system, user } dùng chung cho cả Anthropic và OpenAI-compatible.
@@ -55,20 +56,26 @@ export function buildMenuPrompt(ctx: MenuContext): {
   user: string;
 } {
   const system = [
-    "Bạn là trợ lý ẩm thực gia đình người Việt, chuyên lên thực đơn cân bằng và lành mạnh.",
-    "Nhiệm vụ: đề xuất món ăn cho từng bữa được yêu cầu, kèm công thức ngắn gọn.",
-    "QUY TẮC BẮT BUỘC:",
+    "Bạn vừa là CHUYÊN GIA DINH DƯỠNG, vừa là ĐẦU BẾP gia đình người Việt giàu kinh nghiệm.",
+    "Nhiệm vụ: lên MÂM CƠM cho từng bữa được yêu cầu, mỗi mâm gồm nhiều món theo đúng cơ cấu chỉ định, kèm công thức ngắn gọn.",
+    "QUY TẮC BẮT BUỘC (an toàn):",
     "- TUYỆT ĐỐI không dùng nguyên liệu gây dị ứng của bất kỳ thành viên nào.",
     "- Tôn trọng các kiêng khem (ăn chay, không thịt bò, v.v.).",
     "- Ưu tiên món/nguyên liệu hợp khẩu vị, tránh món bị ghét.",
-    "- Ưu tiên tận dụng thực phẩm đang có trong kho để giảm lãng phí.",
     "- Không lặp lại các món đã ăn gần đây.",
-    "- Đảm bảo cân bằng dinh dưỡng (đủ đạm, rau, tinh bột) và gắn nhãn định tính phù hợp.",
-    "- Nếu phần dưới có 'Món Việt tham khảo', hãy ƯU TIÊN chọn hoặc biến tấu từ danh sách đó để món quen thuộc, đúng ẩm thực Việt (vẫn phải tránh dị ứng/kiêng khem và không lặp món gần đây).",
-    "- Món ăn và công thức viết bằng tiếng Việt.",
+    "QUY TẮC CÂN BẰNG CẢ MÂM (chuyên môn):",
+    "- Mỗi mâm phải cân đối nhóm chất: đủ đạm (món mặn), rau xanh (xào/luộc/canh), tinh bột (cơm trắng ngầm định, KHÔNG cần liệt kê).",
+    "- Đa dạng phương pháp chế biến trong một mâm — KHÔNG hai món cùng kiểu (tránh 2 món chiên/rán).",
+    "- Tránh trùng nguyên liệu chính giữa các món trong mâm (đừng để cả mâm đều thịt heo).",
+    "- Món canh phải 'đưa cơm', hài hoà với món mặn.",
+    "- Ưu tiên nguyên liệu theo mùa và tận dụng thực phẩm đang có trong kho.",
+    "- Gắn nhãn dinh dưỡng phù hợp cho TỪNG món.",
+    "- Nếu có 'Món Việt tham khảo', ưu tiên chọn/biến tấu từ đó cho quen thuộc, đúng ẩm thực Việt.",
+    "- Mỗi bữa phải trả ĐÚNG SỐ MÓN và ĐÚNG VAI TRÒ được yêu cầu bên dưới.",
+    "- Tên món và công thức viết bằng tiếng Việt.",
     "CHỈ trả về JSON đúng cấu trúc, KHÔNG kèm giải thích, KHÔNG markdown.",
     "Cấu trúc JSON:",
-    `{"meals":[{"date":"yyyy-mm-dd","mealType":"BREAKFAST|LUNCH|DINNER","recipe":{"name":"string","servings":number,"cookMinutes":number,"steps":["string"],"nutritionLabels":["string"],"ingredients":[{"name":"string","quantity":number,"unit":"string"}]}}]}`,
+    `{"meals":[{"date":"yyyy-mm-dd","mealType":"BREAKFAST|LUNCH|DINNER","dishes":[{"name":"string","dishRole":"MON_MAN|MON_XAO|CANH_SUP|RAU_LUOC|LAU|COM_BUN_PHO|MON_CUON|TRANG_MIENG|DO_CHUA","servings":number,"cookMinutes":number,"steps":["string"],"nutritionLabels":["string"],"ingredients":[{"name":"string","quantity":number,"unit":"string"}]}]}]}`,
     'Ví dụ nhãn dinh dưỡng: "nhiều rau", "ít dầu mỡ", "thanh đạm", "giàu đạm", "ít tinh bột".',
   ].join("\n");
 
@@ -91,7 +98,12 @@ export function buildMenuPrompt(ctx: MenuContext): {
     "  (kho trống)";
 
   const slotsText = ctx.slots
-    .map((s) => `  - ${s.date}: ${MEALTYPE_LABEL[s.mealType] ?? s.mealType}`)
+    .map((s) => {
+      const roles = s.dishRoles
+        .map((r) => DISH_ROLE_LABEL[r] ?? r)
+        .join(", ");
+      return `  - ${s.date} · ${MEALTYPE_LABEL[s.mealType] ?? s.mealType}: ${s.dishRoles.length} món — ${roles}`;
+    })
     .join("\n");
 
   const user = [
@@ -121,11 +133,11 @@ export function buildMenuPrompt(ctx: MenuContext): {
       ? ctx.availableRecipeNames.map((n) => `  - ${n}`).join("\n")
       : "  (chưa có)",
     "",
-    "Hãy lên thực đơn cho ĐÚNG các bữa sau (mỗi bữa một món chính phù hợp):",
+    "Hãy lên MÂM CƠM cho ĐÚNG các bữa sau — mỗi bữa đúng số món và vai trò ghi kèm:",
     slotsText,
     "",
     catalogReferenceText(ctx),
-    "Trả về JSON theo đúng cấu trúc đã nêu, mỗi phần tử meals ứng với một bữa ở trên.",
+    "Trả về JSON theo đúng cấu trúc: mỗi phần tử meals ứng một bữa, dishes có đúng số món & vai trò yêu cầu.",
   ]
     .filter((l) => l !== "")
     .join("\n");

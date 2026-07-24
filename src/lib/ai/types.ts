@@ -27,6 +27,7 @@ export type DishRoleStr =
 export interface MenuSlot {
   date: string; // yyyy-mm-dd
   mealType: MealTypeStr;
+  dishRoles: DishRoleStr[]; // cơ cấu mâm do server tính
 }
 
 export interface MenuMember {

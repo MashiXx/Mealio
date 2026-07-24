@@ -1,7 +1,7 @@
 import { prisma } from "./db";
 import { getAIProvider } from "./ai";
 import { buildMenuContext, saveMenu } from "./menu";
-import type { MealTypeStr, MenuSlot } from "./ai/types";
+import type { MealTypeStr } from "./ai/types";
 import type { GenerationJob } from "@prisma/client";
 
 // Quản lý job tạo thực đơn chạy ngầm với HÀNG ĐỢI + GIỚI HẠN ĐỒNG THỜI.
@@ -113,13 +113,13 @@ async function runJob(jobId: string): Promise<void> {
   if (!job) return;
 
   try {
-    const slots: MenuSlot[] = job.mealTypes.map((mealType) => ({
+    const rawSlots = job.mealTypes.map((mealType) => ({
       date: ymd(job.date),
       mealType: mealType as MealTypeStr,
     }));
 
     const provider = await getAIProvider(job.familyId);
-    const ctx = await buildMenuContext(job.familyId, slots);
+    const ctx = await buildMenuContext(job.familyId, rawSlots, job.dishCount);
     const menu = await provider.generateMenu(ctx);
     await saveMenu(job.familyId, menu);
 
