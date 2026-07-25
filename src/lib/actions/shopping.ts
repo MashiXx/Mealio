@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireFamily } from "@/lib/tenant";
 import { prisma } from "@/lib/db";
 import { normalizeIngredient } from "@/lib/normalize";
-import { openShoppingListId } from "@/lib/shopping";
+import { addManualShoppingItem } from "@/lib/shopping";
 
 // Tick "đã mua" thì nguyên liệu vào kho ngay — đây là chỗ khép vòng kho ↔ đi chợ,
 // và là cách kho được nuôi mà không phải nhập tay.
@@ -77,17 +77,13 @@ export async function addShoppingItemAction(formData: FormData): Promise<void> {
     update: {},
   });
 
-  const listId = await openShoppingListId(familyId, true);
-  if (!listId) return;
-
-  await prisma.shoppingItem.create({
-    data: {
-      shoppingListId: listId,
-      ingredientId: ingredient.id,
-      quantity,
-      unit,
-      manual: true,
-    },
+  // Đi qua shopping.ts để dùng chung khoá gia đình với syncShopping: thêm dòng
+  // tay đúng lúc một lượt đồng bộ đang chạy mà không khoá thì có thể đẻ ra danh
+  // sách "đang mở" thứ hai, và dòng vừa gõ biến mất khỏi trang.
+  await addManualShoppingItem(familyId, {
+    ingredientId: ingredient.id,
+    quantity,
+    unit,
   });
 
   revalidatePath("/shopping");

@@ -5,9 +5,28 @@ import { requireFamily } from "@/lib/tenant";
 import { prisma } from "@/lib/db";
 import { normalizeIngredient } from "@/lib/normalize";
 import { matchKey, staticKind } from "@/lib/pantry";
+import { syncShopping } from "@/lib/shopping";
 
 // Kho là danh sách "đang có gì": không số lượng, không đơn vị. Thêm nhanh bằng
 // một ô gõ; hạn dùng là tuỳ chọn.
+
+/**
+ * Kho đổi thì phần thiếu của các mâm sắp tới đổi theo, nên phải tính lại đồ đi
+ * chợ. Hai chiều đều cần:
+ * - thêm/đổi-nhóm: thứ vừa có (hoặc vừa thành gia vị) phải RỤNG khỏi danh sách,
+ *   nếu không người dùng tự nhập đồ vừa mua vào kho mà vẫn bị nhắc mua lại;
+ * - xoá ("đã hết"): thứ vừa hết phải QUAY LẠI danh sách. Đây cũng là lối thoát
+ *   cho ca tick nhầm rồi bỏ tick — bỏ tick không rút khỏi kho (cố ý), nên dòng đó
+ *   biến mất khỏi danh sách và chỉ nút "đã hết" ở đây mới gọi nó về được.
+ *
+ * syncShopping idempotent nên gọi thoải mái. Không đụng updatePantryItemAction:
+ * đổi mỗi hạn dùng thì "nhà có gì" không thay đổi.
+ */
+async function afterPantryChange(familyId: string): Promise<void> {
+  await syncShopping(familyId);
+  revalidatePath("/pantry");
+  revalidatePath("/shopping");
+}
 
 /** "yyyy-mm-dd" hợp cú pháp NHƯNG có thể vô nghĩa (vd "2026-13-45") -> Invalid
  * Date lọt qua regex rồi làm Prisma ném RangeError không ai bắt. Trả null cho
@@ -50,7 +69,7 @@ export async function addPantryItemAction(formData: FormData): Promise<void> {
     update: expiresAt ? { expiresAt } : {},
   });
 
-  revalidatePath("/pantry");
+  await afterPantryChange(familyId);
 }
 
 /** Sửa/xoá hạn dùng một dòng kho đã có — rỗng nghĩa là XOÁ hạn (khác với ô
@@ -80,7 +99,7 @@ export async function removePantryItemAction(formData: FormData): Promise<void> 
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   await prisma.pantryItem.deleteMany({ where: { id, familyId } });
-  revalidatePath("/pantry");
+  await afterPantryChange(familyId);
 }
 
 /** Đổi MAIN <-> SEASONING khi bảng tĩnh đoán sai. */
@@ -105,5 +124,5 @@ export async function toggleKindAction(formData: FormData): Promise<void> {
     where: { id: ingredientId },
     data: { kind: current === "MAIN" ? "SEASONING" : "MAIN" },
   });
-  revalidatePath("/pantry");
+  await afterPantryChange(familyId);
 }

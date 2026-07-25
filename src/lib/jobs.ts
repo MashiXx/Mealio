@@ -164,18 +164,23 @@ async function runGenerationJob(jobId: string): Promise<void> {
       mode,
     );
 
-    // Job xếp hàng lúc kho còn đồ, tới lượt chạy thì người dùng đã dọn sạch kho.
-    // Prompt sẽ thành "nhà chỉ có bấy nhiêu: (kho trống)" kèm LUẬT CỨNG — vô
-    // nghĩa, mà một vòng Ollama trên CPU mất hàng phút. Dừng tại đây, nói thật lý
-    // do thay vì đốt thời gian rồi trả về mâm bịa. (Form đã chặn ca kho rỗng lúc
-    // tạo job; đây là ca kho bị dọn SAU đó, form không với tới được.)
-    if (mode === "AVAILABLE_ONLY" && ctx.pantry.length === 0) {
+    // Job xếp hàng lúc kho còn đồ, tới lượt chạy thì kho đã bị dọn. Prompt sẽ
+    // thành "nhà chỉ có bấy nhiêu: (nước mắm, muối, tỏi)" kèm LUẬT CỨNG — vô
+    // nghĩa, mà một vòng Ollama trên CPU mất hàng phút (chưa kể vòng sinh lại chắc
+    // chắn thất bại sau đó). Dừng tại đây, nói thật lý do.
+    //
+    // Điều kiện phải TRÙNG với chốt ở form (startGenerationAction): "không còn
+    // nguyên liệu chính nào", không phải "kho sạch trơn". Kho chỉ còn mắm muối thì
+    // form đã chặn, nên nếu ở đây chỉ đếm số dòng thì hai chốt trôi lệch nhau và
+    // đúng ca kho nghèo lọt qua. ctx.pantry.kind đã là kind HIỆU LỰC (menu.ts giải
+    // NULL bằng bảng tĩnh) nên không cần truy vấn thêm.
+    if (mode === "AVAILABLE_ONLY" && ctx.pantry.every((p) => p.kind !== "MAIN")) {
       await prisma.generationJob.update({
         where: { id: jobId },
         data: {
           status: "FAILED",
           error:
-            "Kho nhà đã trống nên không nấu được bằng đồ có sẵn. Thêm nguyên liệu ở trang Kho nhà rồi tạo lại, hoặc chọn chế độ Thoải mái.",
+            "Kho nhà không còn nguyên liệu chính nào nên không nấu được bằng đồ có sẵn. Thêm đồ tươi ở trang Kho nhà rồi tạo lại, hoặc chọn chế độ Thoải mái.",
           finishedAt: new Date(),
         },
       });
@@ -192,9 +197,21 @@ async function runGenerationJob(jobId: string): Promise<void> {
     if (mode === "AVAILABLE_ONLY") {
       const pantryNames = ctx.pantry.map((p) => p.name);
       const pantry = toPantrySet(pantryNames);
-      // Cờ kind của gia đình thắng bảng gia vị tĩnh: người dùng đã bấm "đổi nhóm"
-      // cho nguyên liệu nào thì ý họ phải có hiệu lực ở cả verify lẫn đi chợ.
-      const kindOf = kindLookupFrom(ctx.pantry);
+      // Cờ "đổi nhóm" phải nạp từ TOÀN BỘ Ingredient của gia đình. Dựng lookup từ
+      // ctx.pantry là NO-OP: map khi đó chỉ chứa khoá của thứ ĐANG CÓ trong kho,
+      // mà missingFor đã loại sạch những khoá đó ở vế "kho có rồi" nên chẳng bao
+      // giờ hỏi tới kind của chúng; còn đúng tập cần xét — thứ KHÔNG có trong kho —
+      // lại vắng mặt trong map nên rơi hết về bảng tĩnh. Kết quả y hệt truyền
+      // staticKind, tức verify phớt lờ cờ người dùng trong khi syncShopping vẫn
+      // tôn trọng nó: "mắm tôm" bị đổi thành SEASONING vẫn tốn một vòng sinh lại,
+      // còn "hành lá" đổi thành MAIN thì lọt verify rồi hiện ở danh sách đi chợ.
+      // Cũng KHÔNG tái dùng được ctx.pantry.kind: menu.ts đã ép `?? staticKind()`
+      // nên ở đó không còn phân biệt cờ của gia đình với mặc định tĩnh.
+      const familyIngredients = await prisma.ingredient.findMany({
+        where: { familyId: job.familyId },
+        select: { name: true, kind: true },
+      });
+      const kindOf = kindLookupFrom(familyIngredients);
       const violations = verifyMenuAgainstPantry(menu, pantry, kindOf);
       if (violations.length > 0) {
         // Chỉ gắn thêm câu nhắc vào ctx CŨ, không dựng lại từ DB: rẻ hơn, và
@@ -211,7 +228,17 @@ async function runGenerationJob(jobId: string): Promise<void> {
     // ctx.slots mang cơ cấu mâm đã yêu cầu cho từng bữa -> mỗi PlannedMeal ghi
     // lại số món đáng lẽ có, để bảng chính biết mâm nào thật sự bị hụt.
     await saveMenu(job.familyId, menu, ctx.slots);
-    await syncShopping(job.familyId);
+
+    // Danh sách đi chợ là sản phẩm PHÁI SINH: hỏng nó không có nghĩa là hỏng thực
+    // đơn. Tới đây mâm đã lưu xong và đã hiện trên bảng chính, nên để lỗi ném ra
+    // ngoài sẽ đánh job thành FAILED kèm câu "kiểm tra API key/model" — sai lý do,
+    // và người dùng có thể bấm sinh lại một vòng Ollama vô ích. syncShopping
+    // idempotent nên lượt đồng bộ kế tiếp (sửa mâm, đổi kho, bấm "Đã nấu") tự chữa.
+    try {
+      await syncShopping(job.familyId);
+    } catch (err) {
+      console.error("[jobs] syncShopping lỗi sau khi đã lưu thực đơn:", err);
+    }
 
     await prisma.generationJob.update({
       where: { id: jobId },
