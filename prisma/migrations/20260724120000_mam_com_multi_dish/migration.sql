@@ -1,12 +1,12 @@
 -- 1) Khử trùng PlannedMeal theo (familyId, date, mealType): giữ bản mới nhất.
+-- PlannedMeal KHÔNG có cột createdAt (xem migration init) nên xếp theo id:
+-- cuid() có tiền tố timestamp -> thứ tự từ điển trùng thứ tự tạo.
 DELETE FROM "PlannedMeal" p
 USING "PlannedMeal" q
 WHERE p."familyId" = q."familyId"
   AND p."date" = q."date"
   AND p."mealType" = q."mealType"
-  AND p."id" <> q."id"
-  AND (p."createdAt" < q."createdAt"
-       OR (p."createdAt" = q."createdAt" AND p."id" < q."id"));
+  AND p."id" < q."id";
 
 -- 2) Bảng MealDish.
 CREATE TABLE "MealDish" (
