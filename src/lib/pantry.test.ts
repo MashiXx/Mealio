@@ -8,6 +8,9 @@ import {
   verifyMenuAgainstPantry,
   violationNote,
   kindLookupFrom,
+  isExpiringSoon,
+  isExpired,
+  EXPIRING_SOON_MS,
 } from "./pantry";
 
 describe("matchKey", () => {
@@ -86,6 +89,46 @@ describe("kindLookupFrom", () => {
     const kindOf = kindLookupFrom([]);
     expect(kindOf(matchKey("tỏi"))).toBe("SEASONING");
     expect(kindOf(matchKey("cá thu"))).toBe("MAIN");
+  });
+
+  it("kind: null (chưa từng đổi nhóm) không ghi đè bảng tĩnh", () => {
+    // Ingredient tạo qua AI (createRecipeFromDish/adoptCatalogDishAction) không
+    // gán kind -> NULL. "nước mắm" phải vẫn ra SEASONING theo bảng tĩnh, không
+    // phải MAIN — đây chính là lỗi nền tảng mà cột kind nullable phải chặn.
+    const kindOf = kindLookupFrom([{ name: "nước mắm", kind: null }]);
+    expect(kindOf(matchKey("nước mắm"))).toBe("SEASONING");
+  });
+
+  it("kind cụ thể (đã bấm đổi nhóm) ghi đè bảng tĩnh", () => {
+    const kindOf = kindLookupFrom([{ name: "nước mắm", kind: "MAIN" }]);
+    expect(kindOf(matchKey("nước mắm"))).toBe("MAIN");
+  });
+});
+
+describe("isExpiringSoon / isExpired", () => {
+  const now = new Date("2026-07-26T00:00:00").getTime();
+
+  it("null thì không sắp hết hạn cũng không quá hạn", () => {
+    expect(isExpiringSoon(null, now)).toBe(false);
+    expect(isExpired(null, now)).toBe(false);
+  });
+
+  it("còn xa hạn thì không sắp hết hạn", () => {
+    const far = new Date(now + EXPIRING_SOON_MS + 1000);
+    expect(isExpiringSoon(far, now)).toBe(false);
+    expect(isExpired(far, now)).toBe(false);
+  });
+
+  it("còn trong ngưỡng nhưng chưa tới hạn: sắp hết hạn, chưa quá hạn", () => {
+    const soon = new Date(now + EXPIRING_SOON_MS - 1000);
+    expect(isExpiringSoon(soon, now)).toBe(true);
+    expect(isExpired(soon, now)).toBe(false);
+  });
+
+  it("đã qua hạn: vẫn tính là sắp hết hạn (để AI ưu tiên dùng) và riêng isExpired báo đúng", () => {
+    const past = new Date(now - 1000);
+    expect(isExpiringSoon(past, now)).toBe(true);
+    expect(isExpired(past, now)).toBe(true);
   });
 });
 

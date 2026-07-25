@@ -2,7 +2,10 @@
 CREATE TYPE "IngredientKind" AS ENUM ('MAIN', 'SEASONING');
 CREATE TYPE "PantryMode" AS ENUM ('AVAILABLE_ONLY', 'FLEXIBLE');
 
-ALTER TABLE "Ingredient" ADD COLUMN "kind" "IngredientKind" NOT NULL DEFAULT 'MAIN';
+-- NULL = chưa phân loại -> tra bảng gia vị tĩnh. Chỉ khi người dùng bấm "đổi
+-- nhóm" mới ghi giá trị cụ thể. Nếu để NOT NULL DEFAULT 'MAIN' thì mọi nguyên
+-- liệu do AI tạo trước đó sẽ mang MAIN và ghi đè bảng tĩnh theo chiều sai.
+ALTER TABLE "Ingredient" ADD COLUMN "kind" "IngredientKind";
 
 -- Kho là danh sách "đang có gì", không định lượng. Bảng đang rỗng ở mọi môi
 -- trường đã biết nên bỏ cột gần như chắc chắn không mất dữ liệu — vẫn phòng hờ ở

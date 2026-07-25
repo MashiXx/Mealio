@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { requireFamily } from "@/lib/tenant";
 import { addPantryItemAction } from "@/lib/actions/pantry";
+import { matchKey, staticKind, isExpiringSoon, isExpired } from "@/lib/pantry";
 import { PantryList, type PantryRow } from "./PantryList";
 
 export default async function PantryPage() {
@@ -12,23 +13,34 @@ export default async function PantryPage() {
     orderBy: { updatedAt: "desc" },
   });
 
-  // Tính "sắp hết hạn" ở đây, không trong PantryList: rule react-hooks/purity
-  // cấm gọi Date.now() trong thân component (coi là hàm bất định lúc render).
-  // new Date().getTime() cho cùng giá trị nhưng Date.now không phải hàm bị rule
-  // này đánh dấu — khớp cách dashboard/page.tsx đang dùng new Date().
+  // Tính "sắp hết hạn"/"quá hạn" ở đây bằng new Date().getTime() rồi truyền
+  // xuống PantryList như dữ liệu thuần — không gọi Date.now()/new Date() bên
+  // trong PantryList. Rule react-hooks/purity cấm gọi Date.now() (không phải
+  // constructor Date) trong thân component vì component có thể re-render và
+  // đổi kết quả giữa các lần render; hoist lên đây còn có lợi thật: mọi dòng
+  // được chấm theo ĐÚNG MỘT mốc thời gian (không lệch nhau vài mili-giây giữa
+  // các lần gọi), và PantryList trở thành hàm thuần của props, dễ test/đọc hơn.
   const now = new Date().getTime();
-  const DAY = 24 * 60 * 60 * 1000;
+
+  // kind trên Ingredient là nullable: NULL nghĩa là gia đình chưa từng bấm "đổi
+  // nhóm", hiệu lực thật phải tra bảng gia vị tĩnh (staticKind), không phải mặc
+  // định coi NULL là MAIN — nếu coi vậy, mọi nguyên liệu AI tạo trước khi trang
+  // kho tồn tại (nước mắm, tỏi...) sẽ rơi nhầm vào nhóm "Đồ tươi".
+  const effectiveKind = (i: (typeof items)[number]) =>
+    i.ingredient.kind ?? staticKind(matchKey(i.ingredient.name));
+
   const toRow = (i: (typeof items)[number]): PantryRow => ({
     id: i.id,
     ingredientId: i.ingredientId,
     name: i.ingredient.name,
     expiresAt: i.expiresAt,
-    expiringSoon: i.expiresAt !== null && i.expiresAt.getTime() - now < 2 * DAY,
+    expiringSoon: isExpiringSoon(i.expiresAt, now),
+    expired: isExpired(i.expiresAt, now),
   });
 
-  const main = items.filter((i) => i.ingredient.kind === "MAIN").map(toRow);
+  const main = items.filter((i) => effectiveKind(i) === "MAIN").map(toRow);
   const seasoning = items
-    .filter((i) => i.ingredient.kind === "SEASONING")
+    .filter((i) => effectiveKind(i) === "SEASONING")
     .map(toRow);
 
   return (

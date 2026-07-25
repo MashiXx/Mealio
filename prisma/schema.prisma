@@ -174,13 +174,18 @@ enum AIProvider {
 // ------------------------------------------------------------------
 
 model Ingredient {
-  id          String         @id @default(cuid())
+  id          String          @id @default(cuid())
   familyId    String
-  family      Family         @relation("FamilyIngredients", fields: [familyId], references: [id], onDelete: Cascade)
+  family      Family          @relation("FamilyIngredients", fields: [familyId], references: [id], onDelete: Cascade)
   name        String
   normalized  String // tên chuẩn hoá (lowercase, bỏ dấu) để match
-  defaultUnit String         @default("phần")
-  kind        IngredientKind @default(MAIN)
+  defaultUnit String          @default("phần")
+  // NULL = gia đình CHƯA tự phân loại -> tra bảng gia vị tĩnh (staticKind trong
+  // src/lib/pantry.ts). Chỉ khi người dùng bấm "đổi nhóm" mới có giá trị cụ thể.
+  // KHÔNG đặt @default(MAIN): mọi Ingredient do AI tạo trước khi trang kho tồn
+  // tại (qua createRecipeFromDish, adoptCatalogDishAction) sẽ mang NOT NULL MAIN
+  // và ghi đè bảng tĩnh sai chiều — vd "nước mắm" hoá MAIN, bị đòi có trong kho.
+  kind        IngredientKind?
 
   pantryItems       PantryItem[]
   recipeIngredients RecipeIngredient[]

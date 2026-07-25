@@ -2,7 +2,7 @@ import { prisma } from "./db";
 import { buildCatalogReference } from "./catalog";
 import { createRecipeFromDish } from "./edit";
 import { planMealStructure } from "./meal-structure";
-import { toPantrySet, kindLookupFrom } from "./pantry";
+import { toPantrySet, kindLookupFrom, staticKind, isExpiringSoon, matchKey } from "./pantry";
 import type { AiMenu } from "./ai/schema";
 import type { MealTypeStr, MenuContext, MenuMember, MenuProfile } from "./ai/types";
 
@@ -62,11 +62,11 @@ export async function buildMenuContext(
     pantry: pantry.map((p) => ({
       name: p.ingredient.name,
       // Ngưỡng "sắp hết hạn" theo spec: còn <= 2 ngày thì nhắc AI ưu tiên dùng.
-      expiringSoon:
-        p.expiresAt !== null &&
-        p.expiresAt.getTime() - Date.now() < 2 * 24 * 60 * 60 * 1000,
+      expiringSoon: isExpiringSoon(p.expiresAt, Date.now()),
       // Mang theo cờ phân loại của gia đình để phía verify khỏi truy vấn lại DB.
-      kind: p.ingredient.kind,
+      // p.ingredient.kind là NULL khi gia đình chưa từng bấm "đổi nhóm" (cột
+      // không có @default) -> rơi về bảng tĩnh, KHÔNG được coi NULL là "MAIN".
+      kind: p.ingredient.kind ?? staticKind(matchKey(p.ingredient.name)),
     })),
     recentRecipeNames: recentRecipes.map((r) => r.name),
     availableRecipeNames: allRecipes.map((r) => r.name),

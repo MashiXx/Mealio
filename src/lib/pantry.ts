@@ -24,6 +24,20 @@ export function toPantrySet(names: string[]): Set<string> {
   return set;
 }
 
+// Ngưỡng "sắp hết hạn" dùng CHUNG cho khối kho gửi AI (src/lib/menu.ts) và trang
+// /pantry (src/app/(app)/pantry) — tách một chỗ để hai nơi không trôi lệch nhau.
+export const EXPIRING_SOON_MS = 2 * 24 * 60 * 60 * 1000;
+
+/** Còn trong ngưỡng sắp hết hạn — kể cả khi ĐÃ quá hạn (hiệu số âm vẫn true). */
+export function isExpiringSoon(expiresAt: Date | null, now: number): boolean {
+  return expiresAt !== null && expiresAt.getTime() - now < EXPIRING_SOON_MS;
+}
+
+/** Đã quá hạn dùng. Dùng cùng với isExpiringSoon để tách hai trạng thái UI. */
+export function isExpired(expiresAt: Date | null, now: number): boolean {
+  return expiresAt !== null && expiresAt.getTime() - now < 0;
+}
+
 export type IngredientKindStr = "MAIN" | "SEASONING";
 export type KindLookup = (matchedKey: string) => IngredientKindStr;
 
@@ -33,12 +47,23 @@ export const staticKind: KindLookup = (key) =>
 
 /**
  * Dựng lookup từ cờ Ingredient.kind của gia đình. Người dùng đã tự phân loại thì
- * ý họ thắng bảng tĩnh; nguyên liệu chưa có trong kho thì rơi về bảng tĩnh.
+ * ý họ thắng bảng tĩnh; nguyên liệu chưa có trong kho, hoặc có nhưng `kind` còn
+ * NULL (chưa từng bấm "đổi nhóm"), thì rơi về bảng tĩnh.
+ *
+ * `kind: null` PHẢI bị loại khỏi map chứ không được nạp thẳng: cột này không có
+ * @default trong schema đúng vì lý do này — Ingredient tạo từ AI (createRecipeFromDish,
+ * adoptCatalogDishAction) không gán kind, nên "nước mắm" tạo trước khi trang kho
+ * tồn tại sẽ có kind=NULL. Nếu map coi NULL là một giá trị hợp lệ (khác MAIN/SEASONING)
+ * và không lọc, TypeScript đã ép kiểu record thành IngredientKindStr rồi nên lỗi sẽ
+ * không hiện ở đây mà hiện ở nơi gọi — lọc tại nguồn cho chắc.
  */
 export function kindLookupFrom(
-  rows: { name: string; kind: IngredientKindStr }[],
+  rows: { name: string; kind: IngredientKindStr | null }[],
 ): KindLookup {
-  const byKey = new Map(rows.map((r) => [matchKey(r.name), r.kind]));
+  const byKey = new Map<string, IngredientKindStr>();
+  for (const r of rows) {
+    if (r.kind !== null) byKey.set(matchKey(r.name), r.kind);
+  }
   return (key) => byKey.get(key) ?? staticKind(key);
 }
 
