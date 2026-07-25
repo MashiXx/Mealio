@@ -8,7 +8,7 @@ import {
   verifyMenuAgainstPantry,
   violationNote,
 } from "./pantry";
-import { syncShoppingFromMeals } from "./shopping";
+import { syncShopping } from "./shopping";
 import type { MealTypeStr } from "./ai/types";
 import type { GenerationJob, EditJob } from "@prisma/client";
 
@@ -188,7 +188,7 @@ async function runGenerationJob(jobId: string): Promise<void> {
     // Model có thể phớt lờ luật cứng trong prompt -> code kiểm lại. Chỉ sinh lại
     // MỘT lần: vi phạm hai lần thì giữ mâm còn hơn bắt người dùng chờ thêm một
     // vòng Ollama trên CPU. Phần thiếu còn lại không làm hỏng mâm — nó chảy tiếp
-    // vào danh sách đi chợ ở syncShoppingFromMeals bên dưới.
+    // vào danh sách đi chợ ở syncShopping bên dưới.
     if (mode === "AVAILABLE_ONLY") {
       const pantryNames = ctx.pantry.map((p) => p.name);
       const pantry = toPantrySet(pantryNames);
@@ -197,19 +197,19 @@ async function runGenerationJob(jobId: string): Promise<void> {
       const kindOf = kindLookupFrom(ctx.pantry);
       const violations = verifyMenuAgainstPantry(menu, pantry, kindOf);
       if (violations.length > 0) {
-        const retryCtx = await buildMenuContext(
-          job.familyId,
-          rawSlots,
-          job.dishCount,
-          mode,
-          violationNote(violations, pantryNames),
-        );
-        menu = await provider.generateMenu(retryCtx);
+        // Chỉ gắn thêm câu nhắc vào ctx CŨ, không dựng lại từ DB: rẻ hơn, và
+        // miễn nhiễm với việc kho đổi giữa hai vòng AI — nếu dựng lại mà lúc đó
+        // kho vừa bị dọn sạch thì prompt lần hai lại thành "(kho trống)" trong
+        // khi câu nhắc vẫn kể tên nguyên liệu cũ, tự mâu thuẫn.
+        menu = await provider.generateMenu({
+          ...ctx,
+          retryNote: violationNote(violations, pantryNames),
+        });
       }
     }
 
-    const plannedIds = await saveMenu(job.familyId, menu);
-    await syncShoppingFromMeals(job.familyId, plannedIds);
+    await saveMenu(job.familyId, menu);
+    await syncShopping(job.familyId);
 
     await prisma.generationJob.update({
       where: { id: jobId },

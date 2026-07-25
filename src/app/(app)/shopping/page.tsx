@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { requireFamily } from "@/lib/tenant";
 import {
   togglePurchasedAction,
+  addShoppingItemAction,
   closeShoppingListAction,
 } from "@/lib/actions/shopping";
 
@@ -44,6 +45,34 @@ export default async function ShoppingPage() {
         )}
       </div>
 
+      {/* Ô thêm tay luôn hiện, kể cả khi danh sách rỗng: gia vị không bao giờ tự
+          vào danh sách nên đây là đường duy nhất để ghi "hết chai nước mắm". */}
+      <form
+        action={addShoppingItemAction}
+        className="flex flex-wrap gap-2 rounded-2xl border border-zinc-200 bg-white p-4"
+      >
+        <input
+          name="name"
+          required
+          placeholder="vd: nước mắm"
+          className="min-w-48 flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+        />
+        <input
+          name="quantity"
+          inputMode="decimal"
+          placeholder="1"
+          className="w-20 rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+        />
+        <input
+          name="unit"
+          placeholder="chai"
+          className="w-28 rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+        />
+        <button className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+          Thêm
+        </button>
+      </form>
+
       {items.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-10 text-center">
           {/* Rỗng là chuyện BÌNH THƯỜNG ở chế độ "nấu bằng đồ có sẵn" — nói rõ để
@@ -76,6 +105,11 @@ export default async function ShoppingPage() {
                 }`}
               >
                 {it.ingredient.name}
+                {/* Nói rõ dòng nào do người dùng tự gõ: đó là dòng KHÔNG bị cuốn
+                    đi khi sinh lại thực đơn, thấy được thì đỡ tưởng app lỗi. */}
+                {it.manual && (
+                  <span className="ml-2 text-xs text-zinc-400">tự thêm</span>
+                )}
               </span>
               <span className="text-xs text-zinc-500">
                 {it.quantity} {it.unit}

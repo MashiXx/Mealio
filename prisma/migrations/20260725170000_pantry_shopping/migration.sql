@@ -26,3 +26,9 @@ CREATE UNIQUE INDEX "PantryItem_familyId_ingredientId_key"
 ALTER TABLE "PlannedMeal" ADD COLUMN "cookedAt" TIMESTAMP(3);
 ALTER TABLE "GenerationJob" ADD COLUMN "pantryMode" "PantryMode" NOT NULL DEFAULT 'FLEXIBLE';
 ALTER TABLE "ShoppingList" ADD COLUMN "closedAt" TIMESTAMP(3);
+
+-- Phân biệt dòng máy sinh với dòng người dùng tự gõ. syncShopping dựng lại toàn
+-- bộ phần máy sinh chưa mua mỗi lần chạy (để sinh lại thực đơn không cộng dồn số
+-- lượng), nên phần tự gõ phải có cờ riêng để không bị cuốn theo. DEFAULT false:
+-- mọi dòng cũ (nếu có) đều do máy sinh.
+ALTER TABLE "ShoppingItem" ADD COLUMN "manual" BOOLEAN NOT NULL DEFAULT false;

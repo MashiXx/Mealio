@@ -376,6 +376,11 @@ model ShoppingItem {
   quantity  Float   @default(1)
   unit      String  @default("phần")
   purchased Boolean @default(false)
+  // true = người dùng tự gõ thêm; syncShopping KHÔNG được xoá hay cộng dồn vào.
+  // Dòng máy sinh (false) bị DỰNG LẠI mỗi lần đồng bộ, nên nếu sync cộng dồn vào
+  // một dòng manual thì con số người dùng gõ sẽ phình lên sau mỗi lần sinh lại
+  // thực đơn — đúng cái lỗi mà việc dựng lại sinh ra để chữa.
+  manual    Boolean @default(false)
 
   @@index([shoppingListId])
 }

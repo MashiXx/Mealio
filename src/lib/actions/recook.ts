@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireFamily } from "@/lib/tenant";
 import { prisma } from "@/lib/db";
+import { syncShopping } from "@/lib/shopping";
 
 /** Copy một mâm cũ sang ngày mình chọn (cùng loại bữa), ghi đè latest-wins. */
 export async function recookAction(formData: FormData): Promise<void> {
@@ -46,6 +47,11 @@ export async function recookAction(formData: FormData): Promise<void> {
     }
   });
 
+  // Mâm mới ở ngày đích -> nhu cầu đi chợ đổi. Phải gọi TRƯỚC redirect vì redirect
+  // ném lỗi điều hướng, mọi thứ sau nó không chạy.
+  await syncShopping(familyId);
+
   revalidatePath("/dashboard");
+  revalidatePath("/shopping");
   redirect(`/dashboard?date=${date}`);
 }

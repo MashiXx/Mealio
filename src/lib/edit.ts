@@ -1,6 +1,7 @@
 import { prisma } from "./db";
 import { normalizeIngredient } from "./normalize";
 import { buildCatalogReference } from "./catalog";
+import { syncShopping } from "./shopping";
 import type { AiDish, AiEditResult } from "./ai/schema";
 import type {
   ChatTurn,
@@ -246,4 +247,9 @@ export async function applyEdit(
     },
     { maxWait: 10_000, timeout: 30_000 },
   );
+
+  // Đổi món thì nhu cầu đi chợ đổi theo. Gọi NGOÀI transaction (sync tự mở
+  // transaction riêng) và sau khi mâm đã commit, để nó đọc được trạng thái mới.
+  // syncShopping tính lại từ toàn bộ mâm sắp tới nên gọi ở đây không sợ cộng dồn.
+  await syncShopping(job.familyId);
 }
