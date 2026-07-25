@@ -93,6 +93,27 @@ export function NewMenuForm() {
         </div>
       </fieldset>
 
+      <label className="block">
+        <span className="mb-1 block text-sm font-medium text-zinc-700">
+          Số món mỗi bữa chính (trưa/tối)
+        </span>
+        <select
+          name="dishCount"
+          defaultValue="auto"
+          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+        >
+          <option value="auto">Tự động (theo số người)</option>
+          <option value="1">1 món</option>
+          <option value="2">2 món</option>
+          <option value="3">3 món</option>
+          <option value="4">4 món</option>
+          <option value="5">5 món</option>
+        </select>
+        <span className="mt-1 block text-xs text-zinc-400">
+          Bữa sáng luôn 1 món. Cơm trắng không tính là món.
+        </span>
+      </label>
+
       {state.error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
           {state.error}

@@ -44,3 +44,19 @@ export const AI_PROVIDERS = [
 export const MEAL_TYPE_LABEL: Record<string, string> = Object.fromEntries(
   MEAL_TYPES.map((m) => [m.value, m.label]),
 );
+
+export const DISH_ROLES = [
+  { value: "MON_MAN", label: "Món mặn" },
+  { value: "MON_XAO", label: "Món xào" },
+  { value: "RAU_LUOC", label: "Rau luộc/Nộm" },
+  { value: "CANH_SUP", label: "Canh/Súp" },
+  { value: "COM_BUN_PHO", label: "Cơm/Bún/Phở" },
+  { value: "MON_CUON", label: "Món cuốn" },
+  { value: "LAU", label: "Lẩu" },
+  { value: "TRANG_MIENG", label: "Tráng miệng" },
+  { value: "DO_CHUA", label: "Đồ chua ăn kèm" },
+] as const;
+
+export const DISH_ROLE_LABEL: Record<string, string> = Object.fromEntries(
+  DISH_ROLES.map((r) => [r.value, r.label]),
+);

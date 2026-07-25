@@ -1,14 +1,17 @@
 import type {
   AIProvider,
   MenuContext,
+  EditContext,
   MemberImage,
   TestConnectionResult,
 } from "./types";
-import { buildMenuPrompt, buildRecognitionPrompt } from "./prompt";
+import { buildMenuPrompt, buildEditPrompt, buildRecognitionPrompt } from "./prompt";
 import {
   parseMenuJson,
+  parseEditJson,
   parseRecognitionJson,
   type AiMenu,
+  type AiEditResult,
   type MemberRecognition,
 } from "./schema";
 import { buildOpenAIClient, type BasicAuth } from "./openai-client";
@@ -47,6 +50,19 @@ export class OpenAICompatibleProvider implements AIProvider {
       response_format: { type: "json_object" },
     });
     return parseMenuJson(res.choices[0]?.message?.content ?? "");
+  }
+
+  async editMeal(ctx: EditContext): Promise<AiEditResult> {
+    const { system, user } = buildEditPrompt(ctx);
+    const res = await this.client().chat.completions.create({
+      model: this.model,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      response_format: { type: "json_object" },
+    });
+    return parseEditJson(res.choices[0]?.message?.content ?? "");
   }
 
   async recognizeMember(image: MemberImage): Promise<MemberRecognition> {

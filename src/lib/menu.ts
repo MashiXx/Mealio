@@ -1,15 +1,17 @@
 import { prisma } from "./db";
-import { normalizeIngredient } from "./normalize";
 import { buildCatalogReference } from "./catalog";
+import { createRecipeFromDish } from "./edit";
+import { planMealStructure } from "./meal-structure";
 import type { AiMenu } from "./ai/schema";
-import type { MenuContext, MenuSlot, MenuMember, MenuProfile } from "./ai/types";
+import type { MealTypeStr, MenuContext, MenuMember, MenuProfile } from "./ai/types";
 
 // Dựng ngữ cảnh cho AI từ dữ liệu gia đình, và lưu thực đơn AI trả về xuống DB
 // (Ingredient chuẩn hoá + Recipe + RecipeIngredient + PlannedMeal).
 
 export async function buildMenuContext(
   familyId: string,
-  slots: MenuSlot[],
+  rawSlots: { date: string; mealType: MealTypeStr }[],
+  dishCount?: number | null,
 ): Promise<MenuContext> {
   const [members, profile, pantry, recentRecipes, allRecipes] =
     await Promise.all([
@@ -61,7 +63,10 @@ export async function buildMenuContext(
     })),
     recentRecipeNames: recentRecipes.map((r) => r.name),
     availableRecipeNames: allRecipes.map((r) => r.name),
-    slots,
+    slots: rawSlots.map((s) => ({
+      ...s,
+      dishRoles: planMealStructure(s.mealType, members.length, dishCount),
+    })),
     // Tham chiếu món Việt từ kho dùng chung, đã lọc theo dị ứng/kiêng khem.
     catalogReference: buildCatalogReference(menuMembers, menuProfile),
   };
@@ -79,58 +84,35 @@ export async function saveMenu(
     const plannedIds: string[] = [];
 
     for (const meal of menu.meals) {
-      const r = meal.recipe;
+      const mealDate = new Date(`${meal.date}T00:00:00`);
 
-      const recipeIngredients: {
-        ingredientId: string;
-        quantity: number;
-        unit: string;
-      }[] = [];
-
-      for (const ing of r.ingredients) {
-        const normalized = normalizeIngredient(ing.name);
-        if (!normalized) continue;
-
-        const ingredient = await tx.ingredient.upsert({
-          where: { familyId_normalized: { familyId, normalized } },
-          create: {
-            familyId,
-            name: ing.name.trim(),
-            normalized,
-            defaultUnit: ing.unit,
-          },
-          update: {},
-        });
-
-        recipeIngredients.push({
-          ingredientId: ingredient.id,
-          quantity: ing.quantity,
-          unit: ing.unit,
-        });
-      }
-
-      const recipe = await tx.recipe.create({
-        data: {
-          familyId,
-          name: r.name,
-          source: "AI",
-          servings: r.servings,
-          cookMinutes: r.cookMinutes,
-          steps: r.steps,
-          nutritionLabels: r.nutritionLabels,
-          ingredients: { create: recipeIngredients },
-        },
+      // latest-wins: xoá mâm cũ của đúng (ngày, bữa) trước khi tạo mới.
+      await tx.plannedMeal.deleteMany({
+        where: { familyId, date: mealDate, mealType: meal.mealType },
       });
 
       const planned = await tx.plannedMeal.create({
         data: {
           familyId,
-          date: new Date(`${meal.date}T00:00:00`),
+          date: mealDate,
           mealType: meal.mealType,
-          recipeId: recipe.id,
-          servings: r.servings,
+          servings: meal.dishes[0]?.servings ?? 4,
         },
       });
+
+      let position = 0;
+      for (const dish of meal.dishes) {
+        const recipeId = await createRecipeFromDish(tx, familyId, dish);
+
+        await tx.mealDish.create({
+          data: {
+            plannedMealId: planned.id,
+            recipeId,
+            dishRole: dish.dishRole,
+            position: position++,
+          },
+        });
+      }
 
       plannedIds.push(planned.id);
     }

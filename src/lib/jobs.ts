@@ -1,8 +1,9 @@
 import { prisma } from "./db";
 import { getAIProvider } from "./ai";
 import { buildMenuContext, saveMenu } from "./menu";
-import type { MealTypeStr, MenuSlot } from "./ai/types";
-import type { GenerationJob } from "@prisma/client";
+import { buildEditContext, applyEdit } from "./edit";
+import type { MealTypeStr } from "./ai/types";
+import type { GenerationJob, EditJob } from "@prisma/client";
 
 // Quản lý job tạo thực đơn chạy ngầm với HÀNG ĐỢI + GIỚI HẠN ĐỒNG THỜI.
 // Module server thường (KHÔNG "use server") nên export được cả hàm không phải
@@ -38,14 +39,29 @@ function ymd(d: Date): string {
  */
 async function failStaleRunning(): Promise<void> {
   const cutoff = new Date(Date.now() - STALE_MS);
+  const data = {
+    status: "FAILED" as const,
+    error:
+      "Quá thời gian xử lý (server có thể đã khởi động lại). Vui lòng thử lại.",
+    finishedAt: new Date(),
+  };
   await prisma.generationJob.updateMany({
     where: { status: "RUNNING", startedAt: { lt: cutoff } },
-    data: {
-      status: "FAILED",
-      error: "Quá thời gian tạo (server có thể đã khởi động lại). Vui lòng thử lại.",
-      finishedAt: new Date(),
-    },
+    data,
   });
+  await prisma.editJob.updateMany({
+    where: { status: "RUNNING", startedAt: { lt: cutoff } },
+    data,
+  });
+}
+
+/** Số job đang RUNNING trên toàn hệ thống (cả tạo menu lẫn sửa) — cùng trần 1 GPU. */
+async function countRunning(): Promise<number> {
+  const [g, e] = await Promise.all([
+    prisma.generationJob.count({ where: { status: "RUNNING" } }),
+    prisma.editJob.count({ where: { status: "RUNNING" } }),
+  ]);
+  return g + e;
 }
 
 // ------------------------------------------------------------------
@@ -57,33 +73,48 @@ async function failStaleRunning(): Promise<void> {
 let pumpRunning = false;
 let pumpQueued = false;
 
-/** Một lượt lấp đầy chỗ trống: đếm RUNNING, claim PENDING cũ nhất tới khi đầy. */
+/**
+ * Một lượt lấp đầy chỗ trống: đếm RUNNING (chung 2 loại job), claim PENDING cũ
+ * nhất — chọn liền mạch giữa hàng GenerationJob và EditJob theo createdAt — tới
+ * khi đầy trần đồng thời.
+ */
 async function pumpOnce(): Promise<void> {
   await failStaleRunning();
 
   for (;;) {
-    const running = await prisma.generationJob.count({
-      where: { status: "RUNNING" },
-    });
-    if (running >= CONCURRENCY) return;
+    if ((await countRunning()) >= CONCURRENCY) return;
 
-    const next = await prisma.generationJob.findFirst({
-      where: { status: "PENDING" },
-      orderBy: { createdAt: "asc" },
-    });
-    if (!next) return;
+    const [nextGen, nextEdit] = await Promise.all([
+      prisma.generationJob.findFirst({
+        where: { status: "PENDING" },
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.editJob.findFirst({
+        where: { status: "PENDING" },
+        orderBy: { createdAt: "asc" },
+      }),
+    ]);
+    if (!nextGen && !nextEdit) return;
 
-    // Claim nguyên tử: chỉ chuyển RUNNING nếu vẫn còn PENDING (chống double-claim).
-    const claimed = await prisma.generationJob.updateMany({
-      where: { id: next.id, status: "PENDING" },
-      data: { status: "RUNNING", startedAt: new Date() },
-    });
-    if (claimed.count === 0) continue; // job đã bị lượt khác lấy
+    // Ưu tiên job có createdAt nhỏ hơn (FIFO liền mạch giữa 2 hàng).
+    const pickEdit =
+      nextEdit && (!nextGen || nextEdit.createdAt < nextGen.createdAt);
 
-    // Chạy nền, không await để lấp tiếp các chỗ khác; xong thì pump lại.
-    void runJob(next.id).finally(() => {
-      void pumpJobs();
-    });
+    if (pickEdit) {
+      const claimed = await prisma.editJob.updateMany({
+        where: { id: nextEdit!.id, status: "PENDING" },
+        data: { status: "RUNNING", startedAt: new Date() },
+      });
+      if (claimed.count === 0) continue;
+      void runEditJob(nextEdit!.id).finally(() => void pumpJobs());
+    } else {
+      const claimed = await prisma.generationJob.updateMany({
+        where: { id: nextGen!.id, status: "PENDING" },
+        data: { status: "RUNNING", startedAt: new Date() },
+      });
+      if (claimed.count === 0) continue;
+      void runGenerationJob(nextGen!.id).finally(() => void pumpJobs());
+    }
   }
 }
 
@@ -108,18 +139,18 @@ export async function pumpJobs(): Promise<void> {
  * Worker: thực thi một job ĐÃ được claim (đang RUNNING). Gọi AI, lưu thực đơn,
  * cập nhật DONE/FAILED. Không ném lỗi ra ngoài.
  */
-async function runJob(jobId: string): Promise<void> {
+async function runGenerationJob(jobId: string): Promise<void> {
   const job = await prisma.generationJob.findUnique({ where: { id: jobId } });
   if (!job) return;
 
   try {
-    const slots: MenuSlot[] = job.mealTypes.map((mealType) => ({
+    const rawSlots = job.mealTypes.map((mealType) => ({
       date: ymd(job.date),
       mealType: mealType as MealTypeStr,
     }));
 
     const provider = await getAIProvider(job.familyId);
-    const ctx = await buildMenuContext(job.familyId, slots);
+    const ctx = await buildMenuContext(job.familyId, rawSlots, job.dishCount);
     const menu = await provider.generateMenu(ctx);
     await saveMenu(job.familyId, menu);
 
@@ -135,6 +166,35 @@ async function runJob(jobId: string): Promise<void> {
         error:
           (e instanceof Error ? e.message : "Không tạo được thực đơn.") +
           " — kiểm tra API key/model hoặc thử lại.",
+        finishedAt: new Date(),
+      },
+    });
+  }
+}
+
+/** Worker cho EditJob: dựng ngữ cảnh, gọi AI sửa mâm, áp kết quả. */
+async function runEditJob(jobId: string): Promise<void> {
+  const job = await prisma.editJob.findUnique({ where: { id: jobId } });
+  if (!job) return;
+
+  try {
+    const provider = await getAIProvider(job.familyId);
+    const ctx = await buildEditContext(job);
+    const result = await provider.editMeal(ctx);
+    await applyEdit(job, result);
+
+    await prisma.editJob.update({
+      where: { id: jobId },
+      data: { status: "DONE", finishedAt: new Date() },
+    });
+  } catch (e) {
+    await prisma.editJob.update({
+      where: { id: jobId },
+      data: {
+        status: "FAILED",
+        error:
+          (e instanceof Error ? e.message : "Không sửa được mâm.") +
+          " — thử lại hoặc kiểm tra AI.",
         finishedAt: new Date(),
       },
     });
@@ -179,5 +239,39 @@ export async function getRecentFailedJob(
       finishedAt: { gte: new Date(Date.now() - FAILED_VISIBLE_MS) },
     },
     orderBy: { finishedAt: "desc" },
+  });
+}
+
+/** EditJob active (PENDING/RUNNING) của gia đình — để UI hiện spinner đúng chỗ. */
+export async function getActiveEditJobs(
+  familyId: string,
+): Promise<
+  Pick<EditJob, "id" | "plannedMealId" | "mealDishId" | "scope" | "status">[]
+> {
+  void pumpJobs();
+  return prisma.editJob.findMany({
+    where: { familyId, status: { in: [...ACTIVE_STATUSES] } },
+    select: {
+      id: true,
+      plannedMealId: true,
+      mealDishId: true,
+      scope: true,
+      status: true,
+    },
+  });
+}
+
+/** EditJob FAILED gần đây còn trong hạn hiển thị. */
+export async function getRecentFailedEditJobs(
+  familyId: string,
+): Promise<Pick<EditJob, "id" | "plannedMealId" | "error">[]> {
+  return prisma.editJob.findMany({
+    where: {
+      familyId,
+      status: "FAILED",
+      finishedAt: { gte: new Date(Date.now() - FAILED_VISIBLE_MS) },
+    },
+    orderBy: { finishedAt: "desc" },
+    select: { id: true, plannedMealId: true, error: true },
   });
 }
