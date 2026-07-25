@@ -72,6 +72,45 @@ export function NewMenuForm() {
 
       <fieldset>
         <legend className="mb-2 text-sm font-medium text-zinc-700">
+          Nguyên liệu
+        </legend>
+        <div className="space-y-2">
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="radio"
+              name="pantryMode"
+              value="FLEXIBLE"
+              defaultChecked
+              className="mt-1"
+            />
+            <span>
+              <span className="font-medium text-zinc-800">Thoải mái</span>
+              <span className="block text-xs text-zinc-500">
+                Ưu tiên đồ sẵn có, thiếu gì đưa vào danh sách đi chợ
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="radio"
+              name="pantryMode"
+              value="AVAILABLE_ONLY"
+              className="mt-1"
+            />
+            <span>
+              <span className="font-medium text-zinc-800">
+                Nấu bằng đồ có sẵn
+              </span>
+              <span className="block text-xs text-zinc-500">
+                Chỉ dùng nguyên liệu trong kho nhà, không phải đi chợ
+              </span>
+            </span>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend className="mb-2 text-sm font-medium text-zinc-700">
           Bữa ăn
         </legend>
         <div className="flex flex-wrap gap-3">

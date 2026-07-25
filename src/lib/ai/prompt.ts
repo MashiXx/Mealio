@@ -93,10 +93,26 @@ export function buildMenuPrompt(ctx: MenuContext): {
       })
       .join("\n") || "  (chưa có thông tin thành viên)";
 
-  const pantryText =
-    ctx.pantry
-      .map((x) => `  - ${x.name}${x.expiringSoon ? "  ⚠ nên dùng sớm" : ""}`)
-      .join("\n") || "  (kho trống)";
+  // Kho vào prompt theo hai giọng khác hẳn nhau: AVAILABLE_ONLY biến kho thành
+  // DANH SÁCH TRẮNG (luật cứng), FLEXIBLE chỉ nêu kho như gợi ý ưu tiên.
+  const pantryNames = ctx.pantry.map(
+    (x) => `  - ${x.name}${x.expiringSoon ? "  ⚠ nên dùng sớm" : ""}`,
+  );
+
+  const pantryBlock =
+    ctx.pantryMode === "AVAILABLE_ONLY"
+      ? [
+          "NGUYÊN LIỆU ĐƯỢC PHÉP DÙNG — nhà chỉ có bấy nhiêu:",
+          pantryNames.join("\n") || "  (kho trống)",
+          "Gia vị luôn có, dùng thoải mái: mắm, muối, đường, dầu, tỏi, hành khô, tiêu.",
+          "",
+          "LUẬT CỨNG: KHÔNG dùng bất kỳ nguyên liệu nào ngoài hai danh sách trên.",
+          "Nghĩ món Việt quen thuộc từ đúng những thứ này.",
+        ].join("\n")
+      : [
+          "Thực phẩm nhà đang có (ưu tiên dùng, được phép mua thêm):",
+          pantryNames.join("\n") || "  (kho trống)",
+        ].join("\n");
 
   const slotsText = ctx.slots
     .map((s) => {
@@ -121,8 +137,7 @@ export function buildMenuPrompt(ctx: MenuContext): {
     `  - Mục tiêu healthy: ${p.healthGoals.length ? p.healthGoals.join(", ") : "cân bằng chung"}`,
     p.notes ? `  - Ghi chú: ${p.notes}` : "",
     "",
-    "Thực phẩm đang có trong kho:",
-    pantryText,
+    pantryBlock,
     "",
     "Món đã ăn gần đây (TRÁNH lặp lại):",
     ctx.recentRecipeNames.length
@@ -138,6 +153,9 @@ export function buildMenuPrompt(ctx: MenuContext): {
     slotsText,
     "",
     catalogReferenceText(ctx.catalogReference),
+    // Câu nhắc khi sinh lại do mâm trước vi phạm kho; rỗng thì .filter bên dưới
+    // tự loại, không để lại dòng trắng thừa.
+    ctx.retryNote ?? "",
     "Trả về JSON theo đúng cấu trúc: mỗi phần tử meals ứng một bữa, dishes có đúng số món & vai trò yêu cầu.",
   ]
     .filter((l) => l !== "")

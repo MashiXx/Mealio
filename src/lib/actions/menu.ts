@@ -47,6 +47,26 @@ export async function startGenerationAction(
     dishCount = n;
   }
 
+  // Chỉ hai giá trị hợp lệ; mọi thứ khác rơi về FLEXIBLE (kho chỉ là gợi ý).
+  const pantryMode =
+    String(formData.get("pantryMode") ?? "") === "AVAILABLE_ONLY"
+      ? ("AVAILABLE_ONLY" as const)
+      : ("FLEXIBLE" as const);
+
+  // Chế độ "đồ có sẵn" mà kho rỗng thì không có gì để nấu — chặn ngay, đừng tạo
+  // job. Chỉ đếm nguyên liệu MAIN: kho chỉ có mắm muối không phải là "có đồ".
+  if (pantryMode === "AVAILABLE_ONLY") {
+    const count = await prisma.pantryItem.count({
+      where: { familyId, ingredient: { kind: "MAIN" } },
+    });
+    if (count === 0) {
+      return {
+        error:
+          "Kho nhà đang trống. Thêm vài nguyên liệu ở trang Kho nhà, hoặc chọn chế độ Thoải mái.",
+      };
+    }
+  }
+
   // Chống trùng: đã có job đang chạy thì không tạo thêm.
   const active = await getActiveJob(familyId);
   if (active) {
@@ -60,6 +80,7 @@ export async function startGenerationAction(
       date: new Date(`${date}T00:00:00`), // midnight local
       mealTypes: selected,
       dishCount,
+      pantryMode,
       status: "PENDING",
     },
   });

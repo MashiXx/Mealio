@@ -2,6 +2,7 @@ import { prisma } from "./db";
 import { buildCatalogReference } from "./catalog";
 import { createRecipeFromDish } from "./edit";
 import { planMealStructure } from "./meal-structure";
+import { toPantrySet, kindLookupFrom } from "./pantry";
 import type { AiMenu } from "./ai/schema";
 import type { MealTypeStr, MenuContext, MenuMember, MenuProfile } from "./ai/types";
 
@@ -12,6 +13,8 @@ export async function buildMenuContext(
   familyId: string,
   rawSlots: { date: string; mealType: MealTypeStr }[],
   dishCount?: number | null,
+  pantryMode: "AVAILABLE_ONLY" | "FLEXIBLE" = "FLEXIBLE",
+  retryNote?: string,
 ): Promise<MenuContext> {
   const [members, profile, pantry, recentRecipes, allRecipes] =
     await Promise.all([
@@ -62,6 +65,8 @@ export async function buildMenuContext(
       expiringSoon:
         p.expiresAt !== null &&
         p.expiresAt.getTime() - Date.now() < 2 * 24 * 60 * 60 * 1000,
+      // Mang theo cờ phân loại của gia đình để phía verify khỏi truy vấn lại DB.
+      kind: p.ingredient.kind,
     })),
     recentRecipeNames: recentRecipes.map((r) => r.name),
     availableRecipeNames: allRecipes.map((r) => r.name),
@@ -69,8 +74,19 @@ export async function buildMenuContext(
       ...s,
       dishRoles: planMealStructure(s.mealType, members.length, dishCount),
     })),
-    // Tham chiếu món Việt từ kho dùng chung, đã lọc theo dị ứng/kiêng khem.
-    catalogReference: buildCatalogReference(menuMembers, menuProfile),
+    // Tham chiếu món Việt từ kho dùng chung, đã lọc theo dị ứng/kiêng khem và
+    // đẩy món hợp kho nhà lên trước.
+    catalogReference: buildCatalogReference(
+      menuMembers,
+      menuProfile,
+      18,
+      toPantrySet(pantry.map((p) => p.ingredient.name)),
+      kindLookupFrom(
+        pantry.map((p) => ({ name: p.ingredient.name, kind: p.ingredient.kind })),
+      ),
+    ),
+    pantryMode,
+    retryNote,
   };
 }
 

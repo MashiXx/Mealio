@@ -5,6 +5,7 @@ import {
   type CatalogDishData,
 } from "@/data/catalog";
 import { normalizeIngredient } from "./normalize";
+import { suggestFromPantry, type KindLookup } from "./pantry";
 import type { MenuMember, MenuProfile, CatalogReference } from "./ai/types";
 
 // Chọn lọc kho món để làm THAM CHIẾU few-shot cho AI: loại món phạm dị ứng/kiêng
@@ -73,17 +74,30 @@ const ROLE_ORDER = [
  * Dựng tham chiếu catalog cho một ngữ cảnh gia đình. Không phụ thuộc DB (đọc
  * dữ liệu tĩnh), nên gọi được ở bất kỳ đâu.
  * @param maxDishes số món tối đa đưa vào prompt (mặc định 18) để prompt gọn.
+ * @param pantry tập khoá kho nhà (đã qua toPantrySet); có thì món hợp kho lên đầu.
+ * @param kindOf phân loại nguyên liệu của gia đình; thiếu thì tra bảng gia vị tĩnh.
  */
 export function buildCatalogReference(
   members: MenuMember[],
   profile: MenuProfile,
   maxDishes = 18,
+  pantry?: Set<string>,
+  kindOf?: KindLookup,
 ): CatalogReference {
   const { excludeTags, vegetarianOnly } = deriveDietConstraints(members);
 
   const allowed = allDishes.filter((d) =>
     dishAllowed(d, excludeTags, vegetarianOnly),
   );
+
+  // Nhà có cá thu thì gợi ý "cá thu kho" trước — model bám món Việt thật thay vì
+  // bịa. Số món hợp kho lấy trước, phần còn lại vẫn qua vòng xoay theo vai trò
+  // bên dưới nên mâm tham khảo không mất tính đa dạng.
+  const preferred = pantry
+    ? suggestFromPantry(allowed, pantry, kindOf, maxDishes)
+    : [];
+  const preferredSlugs = new Set(preferred.map((d) => d.slug));
+  const rest = allowed.filter((d) => !preferredSlugs.has(d.slug));
 
   // Ưu tiên món đúng vùng khẩu vị, rồi tới món linh hoạt (không cố định vùng).
   const region = profile.cuisineRegion;
@@ -96,7 +110,7 @@ export function buildCatalogReference(
 
   // Lấy mẫu đa dạng: xoay vòng theo vai trò món, trong mỗi vai trò ưu tiên điểm vùng.
   const byRole = new Map<string, CatalogDishData[]>();
-  for (const d of allowed) {
+  for (const d of rest) {
     const arr = byRole.get(d.dishRole) ?? [];
     arr.push(d);
     byRole.set(d.dishRole, arr);
@@ -105,7 +119,7 @@ export function buildCatalogReference(
     arr.sort((a, b) => scoreRegion(b) - scoreRegion(a));
   }
 
-  const picked: CatalogDishData[] = [];
+  const picked: CatalogDishData[] = [...preferred];
   const cursors = new Map<string, number>();
   let progressed = true;
   while (picked.length < maxDishes && progressed) {
