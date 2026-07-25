@@ -4,8 +4,9 @@ CREATE TYPE "PantryMode" AS ENUM ('AVAILABLE_ONLY', 'FLEXIBLE');
 
 ALTER TABLE "Ingredient" ADD COLUMN "kind" "IngredientKind" NOT NULL DEFAULT 'MAIN';
 
--- Kho là danh sách "đang có gì", không định lượng. Bảng đang rỗng trên mọi môi
--- trường nên bỏ cột không mất dữ liệu.
+-- Kho là danh sách "đang có gì", không định lượng. Bảng đang rỗng ở mọi môi
+-- trường đã biết nên bỏ cột gần như chắc chắn không mất dữ liệu — vẫn phòng hờ ở
+-- bước khử trùng bên dưới trước khi thêm ràng buộc duy nhất.
 ALTER TABLE "PantryItem" DROP COLUMN "quantity";
 ALTER TABLE "PantryItem" DROP COLUMN "unit";
 

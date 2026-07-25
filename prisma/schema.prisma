@@ -206,6 +206,13 @@ model PantryItem {
   @@index([familyId])
 }
 
+// Một cờ quyết định ba hành vi: MAIN thì bị verify theo kho, vào danh sách đi chợ
+// và rời kho sau khi nấu; SEASONING thì bỏ qua cả ba (coi như bếp luôn có).
+enum IngredientKind {
+  MAIN
+  SEASONING
+}
+
 // ------------------------------------------------------------------
 // Công thức (kho riêng của gia đình)
 // ------------------------------------------------------------------
@@ -232,20 +239,6 @@ model Recipe {
 enum RecipeSource {
   AI
   MANUAL
-}
-
-// Một cờ quyết định ba hành vi: MAIN thì bị verify theo kho, vào danh sách đi chợ
-// và rời kho sau khi nấu; SEASONING thì bỏ qua cả ba (coi như bếp luôn có).
-enum IngredientKind {
-  MAIN
-  SEASONING
-}
-
-// Chế độ sinh thực đơn: kho là danh sách trắng (AVAILABLE_ONLY) hay chỉ là gợi ý
-// ưu tiên, thiếu gì thì đi chợ (FLEXIBLE).
-enum PantryMode {
-  AVAILABLE_ONLY
-  FLEXIBLE
 }
 
 model RecipeIngredient {
@@ -403,6 +396,13 @@ model GenerationJob {
   finishedAt DateTime?
 
   @@index([familyId, status])
+}
+
+// Chế độ sinh thực đơn: kho là danh sách trắng (AVAILABLE_ONLY) hay chỉ là gợi ý
+// ưu tiên, thiếu gì thì đi chợ (FLEXIBLE).
+enum PantryMode {
+  AVAILABLE_ONLY
+  FLEXIBLE
 }
 
 enum JobStatus {

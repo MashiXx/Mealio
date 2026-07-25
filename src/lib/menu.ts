@@ -58,6 +58,7 @@ export async function buildMenuContext(
     profile: menuProfile,
     pantry: pantry.map((p) => ({
       name: p.ingredient.name,
+      // Ngưỡng "sắp hết hạn" theo spec: còn <= 2 ngày thì nhắc AI ưu tiên dùng.
       expiringSoon:
         p.expiresAt !== null &&
         p.expiresAt.getTime() - Date.now() < 2 * 24 * 60 * 60 * 1000,
