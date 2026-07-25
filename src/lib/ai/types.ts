@@ -63,12 +63,6 @@ export interface MenuProfile {
   notes?: string | null;
 }
 
-export interface MenuPantryItem {
-  name: string;
-  quantity: number;
-  unit: string;
-}
-
 /** Tham chiếu few-shot rút từ kho món dùng chung (đã lọc theo dị ứng/kiêng). */
 export interface CatalogReference {
   dishNames: string[];
@@ -79,7 +73,8 @@ export interface MenuContext {
   familySize: number;
   members: MenuMember[];
   profile: MenuProfile;
-  pantry: MenuPantryItem[];
+  // Kho không định lượng nữa: chỉ cần biết có gì và thứ nào sắp hết hạn.
+  pantry: { name: string; expiringSoon: boolean }[];
   recentRecipeNames: string[]; // tránh lặp lại
   availableRecipeNames: string[]; // kho công thức đã có để ưu tiên tái dùng
   slots: MenuSlot[];

@@ -58,8 +58,9 @@ export async function buildMenuContext(
     profile: menuProfile,
     pantry: pantry.map((p) => ({
       name: p.ingredient.name,
-      quantity: p.quantity,
-      unit: p.unit,
+      expiringSoon:
+        p.expiresAt !== null &&
+        p.expiresAt.getTime() - Date.now() < 2 * 24 * 60 * 60 * 1000,
     })),
     recentRecipeNames: recentRecipes.map((r) => r.name),
     availableRecipeNames: allRecipes.map((r) => r.name),

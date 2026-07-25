@@ -94,8 +94,9 @@ export function buildMenuPrompt(ctx: MenuContext): {
       .join("\n") || "  (chưa có thông tin thành viên)";
 
   const pantryText =
-    ctx.pantry.map((x) => `  - ${x.name}: ${x.quantity} ${x.unit}`).join("\n") ||
-    "  (kho trống)";
+    ctx.pantry
+      .map((x) => `  - ${x.name}${x.expiringSoon ? "  ⚠ nên dùng sớm" : ""}`)
+      .join("\n") || "  (kho trống)";
 
   const slotsText = ctx.slots
     .map((s) => {

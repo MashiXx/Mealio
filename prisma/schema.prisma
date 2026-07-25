@@ -174,12 +174,13 @@ enum AIProvider {
 // ------------------------------------------------------------------
 
 model Ingredient {
-  id          String @id @default(cuid())
+  id          String         @id @default(cuid())
   familyId    String
-  family      Family @relation("FamilyIngredients", fields: [familyId], references: [id], onDelete: Cascade)
+  family      Family         @relation("FamilyIngredients", fields: [familyId], references: [id], onDelete: Cascade)
   name        String
   normalized  String // tên chuẩn hoá (lowercase, bỏ dấu) để match
-  defaultUnit String @default("phần")
+  defaultUnit String         @default("phần")
+  kind        IngredientKind @default(MAIN)
 
   pantryItems       PantryItem[]
   recipeIngredients RecipeIngredient[]
@@ -197,11 +198,11 @@ model PantryItem {
   ingredientId String
   ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
 
-  quantity  Float     @default(1)
-  unit      String    @default("phần")
   expiresAt DateTime?
   updatedAt DateTime  @updatedAt
 
+  // Kho là danh sách "có/không", không định lượng -> mỗi nguyên liệu đúng một dòng.
+  @@unique([familyId, ingredientId])
   @@index([familyId])
 }
 
@@ -231,6 +232,20 @@ model Recipe {
 enum RecipeSource {
   AI
   MANUAL
+}
+
+// Một cờ quyết định ba hành vi: MAIN thì bị verify theo kho, vào danh sách đi chợ
+// và rời kho sau khi nấu; SEASONING thì bỏ qua cả ba (coi như bếp luôn có).
+enum IngredientKind {
+  MAIN
+  SEASONING
+}
+
+// Chế độ sinh thực đơn: kho là danh sách trắng (AVAILABLE_ONLY) hay chỉ là gợi ý
+// ưu tiên, thiếu gì thì đi chợ (FLEXIBLE).
+enum PantryMode {
+  AVAILABLE_ONLY
+  FLEXIBLE
 }
 
 model RecipeIngredient {
@@ -275,7 +290,8 @@ model PlannedMeal {
 
   date     DateTime
   mealType MealType
-  servings Int      @default(4) // số người ăn bữa này
+  servings Int       @default(4) // số người ăn bữa này
+  cookedAt DateTime? // đã nấu lúc nào; null = chưa nấu
 
   dishes      MealDish[]
   editJobs    EditJob[]
@@ -345,6 +361,7 @@ model ShoppingList {
   family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
   createdAt DateTime       @default(now())
+  closedAt  DateTime? // đã đi chợ xong lúc nào; null = danh sách đang mở
   items     ShoppingItem[]
 
   @@index([familyId])
@@ -374,11 +391,12 @@ model GenerationJob {
   familyId String
   family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
-  date      DateTime // ngày mục tiêu (midnight)
-  mealTypes MealType[] // các bữa cần tạo
-  status    JobStatus  @default(PENDING)
-  error     String? // lý do nếu FAILED
-  dishCount Int? // số món/bữa chính người dùng chọn; null = tự động
+  date       DateTime // ngày mục tiêu (midnight)
+  mealTypes  MealType[] // các bữa cần tạo
+  status     JobStatus  @default(PENDING)
+  error      String? // lý do nếu FAILED
+  dishCount  Int? // số món/bữa chính người dùng chọn; null = tự động
+  pantryMode PantryMode @default(FLEXIBLE) // chế độ dùng kho khi sinh thực đơn
 
   createdAt  DateTime  @default(now())
   startedAt  DateTime?
