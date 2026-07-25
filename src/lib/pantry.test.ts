@@ -89,3 +89,63 @@ describe("suggestFromPantry", () => {
     expect(suggestFromPantry(dishes, toPantrySet([]))).toEqual([]);
   });
 });
+
+import { verifyMenuAgainstPantry } from "./pantry";
+
+describe("verifyMenuAgainstPantry", () => {
+  const pantry = toPantrySet(["cá thu", "đậu phụ", "cà chua"]);
+
+  const menu = {
+    meals: [
+      {
+        date: "2026-07-26",
+        mealType: "DINNER" as const,
+        dishes: [
+          {
+            name: "Cá thu kho tộ",
+            ingredients: [
+              { name: "cá thu", quantity: 500, unit: "g" },
+              { name: "nước mắm", quantity: 2, unit: "thìa" },
+            ],
+          },
+          {
+            name: "Bò xào cần tỏi",
+            ingredients: [
+              { name: "thịt bò", quantity: 300, unit: "g" },
+              { name: "cần tây", quantity: 1, unit: "bó" },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  it("chỉ báo món dùng nguyên liệu chính ngoài kho", () => {
+    const v = verifyMenuAgainstPantry(menu, pantry);
+    expect(v).toHaveLength(1);
+    expect(v[0].dishName).toBe("Bò xào cần tỏi");
+    expect(v[0].missing.map((m) => m.name)).toEqual(["thịt bò", "cần tây"]);
+  });
+
+  it("mâm hợp lệ thì trả rỗng", () => {
+    const ok = {
+      meals: [
+        {
+          date: "2026-07-26",
+          mealType: "DINNER" as const,
+          dishes: [
+            {
+              name: "Đậu sốt cà",
+              ingredients: [
+                { name: "đậu phụ", quantity: 2, unit: "bìa" },
+                { name: "cà chua", quantity: 3, unit: "quả" },
+                { name: "hành lá", quantity: 1, unit: "nhánh" },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(verifyMenuAgainstPantry(ok, pantry)).toEqual([]);
+  });
+});

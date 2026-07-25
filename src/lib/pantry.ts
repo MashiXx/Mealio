@@ -65,3 +65,46 @@ export function suggestFromPantry<T extends { ingredients: { name: string }[] }>
     .slice(0, limit)
     .map((x) => x.d);
 }
+
+export type Violation = { dishName: string; missing: Need[] };
+
+type MenuLike = {
+  meals: { dishes: { name: string; ingredients: Need[] }[] }[];
+};
+
+/**
+ * Kiểm mâm AI trả về ở chế độ AVAILABLE_ONLY. Model có thể phớt lờ luật trong
+ * prompt nên không tin lời hứa — code kiểm lại. Chỉ soi nguyên liệu chính.
+ */
+export function verifyMenuAgainstPantry(
+  menu: MenuLike,
+  pantry: Set<string>,
+): Violation[] {
+  const out: Violation[] = [];
+  for (const meal of menu.meals) {
+    for (const dish of meal.dishes) {
+      const missing = missingFor(dish.ingredients, pantry);
+      if (missing.length > 0) out.push({ dishName: dish.name, missing });
+    }
+  }
+  return out;
+}
+
+/** Câu nhắc gửi lại cho AI khi mâm vi phạm. */
+export function violationNote(
+  violations: Violation[],
+  pantryNames: string[],
+): string {
+  const lines = violations.map(
+    (v) =>
+      `Món "${v.dishName}" dùng ${v.missing
+        .map((m) => m.name)
+        .join(", ")} không có trong kho.`,
+  );
+  return [
+    "LẦN TRƯỚC BẠN ĐÃ SAI:",
+    ...lines,
+    `Chỉ được dùng: ${pantryNames.join(", ")} (cộng gia vị cơ bản).`,
+    "Hãy làm lại cho đúng.",
+  ].join("\n");
+}
