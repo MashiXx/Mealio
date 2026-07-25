@@ -63,12 +63,6 @@ export interface MenuProfile {
   notes?: string | null;
 }
 
-export interface MenuPantryItem {
-  name: string;
-  quantity: number;
-  unit: string;
-}
-
 /** Tham chiếu few-shot rút từ kho món dùng chung (đã lọc theo dị ứng/kiêng). */
 export interface CatalogReference {
   dishNames: string[];
@@ -79,11 +73,16 @@ export interface MenuContext {
   familySize: number;
   members: MenuMember[];
   profile: MenuProfile;
-  pantry: MenuPantryItem[];
+  // Kho không định lượng nữa: chỉ cần biết có gì và thứ nào sắp hết hạn. `kind`
+  // đi kèm để phía gọi dựng được KindLookup mà không phải truy vấn DB lần nữa.
+  pantry: { name: string; expiringSoon: boolean; kind: "MAIN" | "SEASONING" }[];
   recentRecipeNames: string[]; // tránh lặp lại
   availableRecipeNames: string[]; // kho công thức đã có để ưu tiên tái dùng
   slots: MenuSlot[];
   catalogReference?: CatalogReference; // gợi ý món Việt tham khảo cho AI
+  // Kho là danh sách trắng (AVAILABLE_ONLY) hay chỉ gợi ý ưu tiên (FLEXIBLE).
+  pantryMode: "AVAILABLE_ONLY" | "FLEXIBLE";
+  retryNote?: string; // câu nhắc khi sinh lại do vi phạm kho
 }
 
 /** Ngữ cảnh cho một lần SỬA mâm (per-món hoặc cả mâm). */

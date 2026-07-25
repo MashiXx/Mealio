@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireFamily } from "@/lib/tenant";
 import { prisma } from "@/lib/db";
+import { syncShopping } from "@/lib/shopping";
 
 /** Copy một mâm cũ sang ngày mình chọn (cùng loại bữa), ghi đè latest-wins. */
 export async function recookAction(formData: FormData): Promise<void> {
@@ -31,6 +32,10 @@ export async function recookAction(formData: FormData): Promise<void> {
         date: targetDate,
         mealType: source.mealType,
         servings: source.servings,
+        // Chép luôn số món đã hoạch định của mâm nguồn: nấu lại là chép nguyên
+        // mâm, nên "kế hoạch" của bản sao đúng bằng kế hoạch của bản gốc. Bỏ
+        // trống thì mâm nấu lại mất cảnh báo hụt món mà mâm gốc đang có.
+        dishCount: source.dishCount,
       },
     });
     // Copy MealDish: dùng lại recipeId cũ (an toàn — sửa sau này sinh Recipe mới).
@@ -46,6 +51,11 @@ export async function recookAction(formData: FormData): Promise<void> {
     }
   });
 
+  // Mâm mới ở ngày đích -> nhu cầu đi chợ đổi. Phải gọi TRƯỚC redirect vì redirect
+  // ném lỗi điều hướng, mọi thứ sau nó không chạy.
+  await syncShopping(familyId);
+
   revalidatePath("/dashboard");
+  revalidatePath("/shopping");
   redirect(`/dashboard?date=${date}`);
 }

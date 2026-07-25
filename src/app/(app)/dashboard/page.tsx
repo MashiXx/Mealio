@@ -245,6 +245,13 @@ export default async function DashboardPage({
                       (max, d) => Math.max(max, d.recipe.cookMinutes),
                       0,
                     ),
+                    cooked: meal.cookedAt !== null,
+                    // Con số ĐÃ HOẠCH ĐỊNH lúc sinh mâm, đọc thẳng từ DB — không
+                    // tính lại bằng planMealStructure(mealType, familySize, null)
+                    // ở đây: làm vậy là bỏ qua số món người dùng tự chọn, nhà 5
+                    // người chọn 2 món sẽ bị mắng là "mâm thiếu món" oan. null =
+                    // mâm cũ trước Giai đoạn 4 -> không đủ căn cứ, không cảnh báo.
+                    plannedDishes: meal.dishCount,
                     chatHistory: Array.isArray(meal.chatHistory)
                       ? (meal.chatHistory as MealView["chatHistory"])
                       : [],

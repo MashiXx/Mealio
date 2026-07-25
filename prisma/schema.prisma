@@ -174,12 +174,18 @@ enum AIProvider {
 // ------------------------------------------------------------------
 
 model Ingredient {
-  id          String @id @default(cuid())
+  id          String          @id @default(cuid())
   familyId    String
-  family      Family @relation("FamilyIngredients", fields: [familyId], references: [id], onDelete: Cascade)
+  family      Family          @relation("FamilyIngredients", fields: [familyId], references: [id], onDelete: Cascade)
   name        String
   normalized  String // tên chuẩn hoá (lowercase, bỏ dấu) để match
-  defaultUnit String @default("phần")
+  defaultUnit String          @default("phần")
+  // NULL = gia đình CHƯA tự phân loại -> tra bảng gia vị tĩnh (staticKind trong
+  // src/lib/pantry.ts). Chỉ khi người dùng bấm "đổi nhóm" mới có giá trị cụ thể.
+  // KHÔNG đặt @default(MAIN): mọi Ingredient do AI tạo trước khi trang kho tồn
+  // tại (qua createRecipeFromDish, adoptCatalogDishAction) sẽ mang NOT NULL MAIN
+  // và ghi đè bảng tĩnh sai chiều — vd "nước mắm" hoá MAIN, bị đòi có trong kho.
+  kind        IngredientKind?
 
   pantryItems       PantryItem[]
   recipeIngredients RecipeIngredient[]
@@ -197,12 +203,19 @@ model PantryItem {
   ingredientId String
   ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
 
-  quantity  Float     @default(1)
-  unit      String    @default("phần")
   expiresAt DateTime?
   updatedAt DateTime  @updatedAt
 
+  // Kho là danh sách "có/không", không định lượng -> mỗi nguyên liệu đúng một dòng.
+  @@unique([familyId, ingredientId])
   @@index([familyId])
+}
+
+// Một cờ quyết định ba hành vi: MAIN thì bị verify theo kho, vào danh sách đi chợ
+// và rời kho sau khi nấu; SEASONING thì bỏ qua cả ba (coi như bếp luôn có).
+enum IngredientKind {
+  MAIN
+  SEASONING
 }
 
 // ------------------------------------------------------------------
@@ -275,7 +288,12 @@ model PlannedMeal {
 
   date     DateTime
   mealType MealType
-  servings Int      @default(4) // số người ăn bữa này
+  servings Int       @default(4) // số người ăn bữa này
+  cookedAt DateTime? // đã nấu lúc nào; null = chưa nấu
+  // Số món đã hoạch định lúc sinh mâm; null = mâm cũ trước Giai đoạn 4. Chỉ dùng
+  // để biết mâm có bị hụt so với kế hoạch hay không — KHÔNG tính lại từ số người
+  // ở lúc đọc, vì như thế sẽ bỏ qua số món người dùng tự chọn.
+  dishCount Int?
 
   dishes      MealDish[]
   editJobs    EditJob[]
@@ -345,6 +363,7 @@ model ShoppingList {
   family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
   createdAt DateTime       @default(now())
+  closedAt  DateTime? // đã đi chợ xong lúc nào; null = danh sách đang mở
   items     ShoppingItem[]
 
   @@index([familyId])
@@ -361,6 +380,11 @@ model ShoppingItem {
   quantity  Float   @default(1)
   unit      String  @default("phần")
   purchased Boolean @default(false)
+  // true = người dùng tự gõ thêm; syncShopping KHÔNG được xoá hay cộng dồn vào.
+  // Dòng máy sinh (false) bị DỰNG LẠI mỗi lần đồng bộ, nên nếu sync cộng dồn vào
+  // một dòng manual thì con số người dùng gõ sẽ phình lên sau mỗi lần sinh lại
+  // thực đơn — đúng cái lỗi mà việc dựng lại sinh ra để chữa.
+  manual    Boolean @default(false)
 
   @@index([shoppingListId])
 }
@@ -374,17 +398,25 @@ model GenerationJob {
   familyId String
   family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
-  date      DateTime // ngày mục tiêu (midnight)
-  mealTypes MealType[] // các bữa cần tạo
-  status    JobStatus  @default(PENDING)
-  error     String? // lý do nếu FAILED
-  dishCount Int? // số món/bữa chính người dùng chọn; null = tự động
+  date       DateTime // ngày mục tiêu (midnight)
+  mealTypes  MealType[] // các bữa cần tạo
+  status     JobStatus  @default(PENDING)
+  error      String? // lý do nếu FAILED
+  dishCount  Int? // số món/bữa chính người dùng chọn; null = tự động
+  pantryMode PantryMode @default(FLEXIBLE) // chế độ dùng kho khi sinh thực đơn
 
   createdAt  DateTime  @default(now())
   startedAt  DateTime?
   finishedAt DateTime?
 
   @@index([familyId, status])
+}
+
+// Chế độ sinh thực đơn: kho là danh sách trắng (AVAILABLE_ONLY) hay chỉ là gợi ý
+// ưu tiên, thiếu gì thì đi chợ (FLEXIBLE).
+enum PantryMode {
+  AVAILABLE_ONLY
+  FLEXIBLE
 }
 
 enum JobStatus {

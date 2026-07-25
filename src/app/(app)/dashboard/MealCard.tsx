@@ -8,6 +8,11 @@ import {
   addDishAction,
   deleteDishAction,
 } from "@/lib/actions/edit";
+// Server action gọi từ client component: hợp lệ vì actions/cook.ts có "use server"
+// ở đầu FILE, nên import vào đây chỉ là một tham chiếu, không kéo code server sang
+// bundle client. Đi qua <form action={...}> thay vì onClick để bấm được cả khi JS
+// chưa hydrate xong.
+import { markCookedAction } from "@/lib/actions/cook";
 import { DishInfo } from "./DishInfo";
 
 type ChatTurn = { role: "user" | "assistant"; content: string };
@@ -28,6 +33,10 @@ export type MealView = {
   mealTypeLabel: string;
   servings: number;
   totalMinutes: number;
+  cooked: boolean;
+  // Số món đã hoạch định lúc sinh mâm (PlannedMeal.dishCount). null = mâm cũ
+  // trước Giai đoạn 4, không có căn cứ nên không cảnh báo gì.
+  plannedDishes: number | null;
   chatHistory: ChatTurn[];
   dishes: DishView[];
 };
@@ -126,6 +135,34 @@ export function MealCard({
           {meal.servings} người · {meal.dishes.length} món
           {meal.totalMinutes > 0 && ` · ~${meal.totalMinutes} phút`}
         </span>
+        {meal.cooked ? (
+          <span className="text-xs font-medium text-emerald-600">✓ đã nấu</span>
+        ) : (
+          <form action={markCookedAction}>
+            <input type="hidden" name="plannedMealId" value={meal.id} />
+            <button
+              type="submit"
+              disabled={anyBusy}
+              className="rounded border border-emerald-300 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+            >
+              Đã nấu
+            </button>
+          </form>
+        )}
+        {/* Mâm hụt món là chuyện BÌNH THƯỜNG ở chế độ "nấu bằng đồ có sẵn" (kho
+            chỉ còn trứng thì không nặn ra đủ mặn + canh + rau) — nói thật thay vì
+            lấp bừa. Chỉ NÊU SỰ THẬT rồi mới gợi ý nguyên nhân có điều kiện: mâm
+            còn hụt vì người dùng tự xoá món, và ta không lưu chế độ đã sinh nên
+            KHÔNG được khẳng định là tại kho. Cảnh báo sai chỗ tệ hơn không có
+            cảnh báo, vì người dùng học cách phớt lờ nó. */}
+        {meal.plannedDishes !== null &&
+          meal.dishes.length < meal.plannedDishes && (
+            <span className="text-xs text-amber-600">
+              Mâm này có {meal.dishes.length}/{meal.plannedDishes} món so với kế
+              hoạch. Nếu tạo ở chế độ “Nấu bằng đồ có sẵn” thì thường là do kho
+              chưa đủ nguyên liệu cho các vai trò còn lại.
+            </span>
+          )}
         {mealBusy && (
           <span className="flex items-center gap-1 text-xs text-amber-600">
             <span className="h-3 w-3 animate-spin rounded-full border-2 border-amber-300 border-t-amber-600" />
