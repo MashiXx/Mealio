@@ -1,6 +1,6 @@
 import { normalizeIngredient } from "./normalize";
-import { canonicalIngredient } from "../data/ingredient-aliases";
-import { isSeasoning } from "../data/seasonings";
+import { canonicalIngredient } from "@/data/ingredient-aliases";
+import { isSeasoning } from "@/data/seasonings";
 
 // Logic thuần cho kho thực phẩm: khớp tên, tìm phần thiếu, gộp nhu cầu đi chợ,
 // gợi ý món theo nguyên liệu đang có. KHÔNG chạm DB để test được bằng vitest.
