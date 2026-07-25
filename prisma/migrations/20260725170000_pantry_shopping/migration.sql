@@ -24,6 +24,13 @@ CREATE UNIQUE INDEX "PantryItem_familyId_ingredientId_key"
   ON "PantryItem"("familyId", "ingredientId");
 
 ALTER TABLE "PlannedMeal" ADD COLUMN "cookedAt" TIMESTAMP(3);
+
+-- Số món ĐÃ HOẠCH ĐỊNH lúc sinh mâm (số vai trò planMealStructure yêu cầu cho
+-- đúng bữa đó). Không suy lại được ở lúc đọc: số món người dùng chọn nằm trên
+-- GenerationJob đã xong việc, mà tính lại theo số người hiện tại thì nhà 5 người
+-- chủ động chọn 2 món sẽ bị báo nhầm là "mâm thiếu món". NULL = mâm cũ sinh trước
+-- Giai đoạn 4, không đủ căn cứ để cảnh báo -> im lặng.
+ALTER TABLE "PlannedMeal" ADD COLUMN "dishCount" INTEGER;
 ALTER TABLE "GenerationJob" ADD COLUMN "pantryMode" "PantryMode" NOT NULL DEFAULT 'FLEXIBLE';
 ALTER TABLE "ShoppingList" ADD COLUMN "closedAt" TIMESTAMP(3);
 

@@ -34,7 +34,9 @@ export type MealView = {
   servings: number;
   totalMinutes: number;
   cooked: boolean;
-  expectedDishes: number; // số vai trò món đáng lẽ có — để cảnh báo mâm thiếu
+  // Số món đã hoạch định lúc sinh mâm (PlannedMeal.dishCount). null = mâm cũ
+  // trước Giai đoạn 4, không có căn cứ nên không cảnh báo gì.
+  plannedDishes: number | null;
   chatHistory: ChatTurn[];
   dishes: DishView[];
 };
@@ -149,13 +151,18 @@ export function MealCard({
         )}
         {/* Mâm hụt món là chuyện BÌNH THƯỜNG ở chế độ "nấu bằng đồ có sẵn" (kho
             chỉ còn trứng thì không nặn ra đủ mặn + canh + rau) — nói thật thay vì
-            lấp bừa, và chỉ ra hai lối thoát. */}
-        {meal.dishes.length < meal.expectedDishes && (
-          <span className="text-xs text-amber-600">
-            Kho hiện đủ nấu {meal.dishes.length}/{meal.expectedDishes} món. Thêm
-            đồ tươi vào kho, hoặc chuyển sang chế độ Thoải mái.
-          </span>
-        )}
+            lấp bừa. Chỉ NÊU SỰ THẬT rồi mới gợi ý nguyên nhân có điều kiện: mâm
+            còn hụt vì người dùng tự xoá món, và ta không lưu chế độ đã sinh nên
+            KHÔNG được khẳng định là tại kho. Cảnh báo sai chỗ tệ hơn không có
+            cảnh báo, vì người dùng học cách phớt lờ nó. */}
+        {meal.plannedDishes !== null &&
+          meal.dishes.length < meal.plannedDishes && (
+            <span className="text-xs text-amber-600">
+              Mâm này có {meal.dishes.length}/{meal.plannedDishes} món so với kế
+              hoạch. Nếu tạo ở chế độ “Nấu bằng đồ có sẵn” thì thường là do kho
+              chưa đủ nguyên liệu cho các vai trò còn lại.
+            </span>
+          )}
         {mealBusy && (
           <span className="flex items-center gap-1 text-xs text-amber-600">
             <span className="h-3 w-3 animate-spin rounded-full border-2 border-amber-300 border-t-amber-600" />

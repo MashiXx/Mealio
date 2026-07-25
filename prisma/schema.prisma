@@ -290,6 +290,10 @@ model PlannedMeal {
   mealType MealType
   servings Int       @default(4) // số người ăn bữa này
   cookedAt DateTime? // đã nấu lúc nào; null = chưa nấu
+  // Số món đã hoạch định lúc sinh mâm; null = mâm cũ trước Giai đoạn 4. Chỉ dùng
+  // để biết mâm có bị hụt so với kế hoạch hay không — KHÔNG tính lại từ số người
+  // ở lúc đọc, vì như thế sẽ bỏ qua số món người dùng tự chọn.
+  dishCount Int?
 
   dishes      MealDish[]
   editJobs    EditJob[]

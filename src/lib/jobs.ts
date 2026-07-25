@@ -208,7 +208,9 @@ async function runGenerationJob(jobId: string): Promise<void> {
       }
     }
 
-    await saveMenu(job.familyId, menu);
+    // ctx.slots mang cơ cấu mâm đã yêu cầu cho từng bữa -> mỗi PlannedMeal ghi
+    // lại số món đáng lẽ có, để bảng chính biết mâm nào thật sự bị hụt.
+    await saveMenu(job.familyId, menu, ctx.slots);
     await syncShopping(job.familyId);
 
     await prisma.generationJob.update({

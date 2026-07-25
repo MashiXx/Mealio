@@ -2,7 +2,6 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireFamily } from "@/lib/tenant";
 import { MEAL_TYPE_LABEL, DISH_ROLE_LABEL } from "@/lib/enums";
-import { planMealStructure } from "@/lib/meal-structure";
 import {
   getActiveJob,
   getRecentFailedJob,
@@ -95,9 +94,6 @@ export default async function DashboardPage({
   const allergies = [
     ...new Set(family?.members.flatMap((m) => m.allergies) ?? []),
   ];
-  // Số người trong nhà — dùng để biết một mâm ĐÁNG LẼ có mấy món. Lấy từ `family`
-  // đã nạp sẵn ở trên chứ không thêm một truy vấn count riêng.
-  const familySize = family?.members.length ?? 0;
 
   return (
     <div className="space-y-6">
@@ -250,15 +246,12 @@ export default async function DashboardPage({
                       0,
                     ),
                     cooked: meal.cookedAt !== null,
-                    // Truyền `null` cho dishCount là CỐ Ý: số món người dùng chọn
-                    // nằm trên GenerationJob đã xong việc (mâm có thể sinh từ job
-                    // khác, hoặc copy qua recook), ở đây chỉ cần con số mặc định
-                    // theo số người để biết mâm có bị hụt hay không.
-                    expectedDishes: planMealStructure(
-                      meal.mealType,
-                      familySize,
-                      null,
-                    ).length,
+                    // Con số ĐÃ HOẠCH ĐỊNH lúc sinh mâm, đọc thẳng từ DB — không
+                    // tính lại bằng planMealStructure(mealType, familySize, null)
+                    // ở đây: làm vậy là bỏ qua số món người dùng tự chọn, nhà 5
+                    // người chọn 2 món sẽ bị mắng là "mâm thiếu món" oan. null =
+                    // mâm cũ trước Giai đoạn 4 -> không đủ căn cứ, không cảnh báo.
+                    plannedDishes: meal.dishCount,
                     chatHistory: Array.isArray(meal.chatHistory)
                       ? (meal.chatHistory as MealView["chatHistory"])
                       : [],

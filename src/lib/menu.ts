@@ -4,7 +4,13 @@ import { createRecipeFromDish } from "./edit";
 import { planMealStructure } from "./meal-structure";
 import { toPantrySet, kindLookupFrom, staticKind, isExpiringSoon, matchKey } from "./pantry";
 import type { AiMenu } from "./ai/schema";
-import type { MealTypeStr, MenuContext, MenuMember, MenuProfile } from "./ai/types";
+import type {
+  MealTypeStr,
+  MenuContext,
+  MenuMember,
+  MenuProfile,
+  MenuSlot,
+} from "./ai/types";
 
 // Dựng ngữ cảnh cho AI từ dữ liệu gia đình, và lưu thực đơn AI trả về xuống DB
 // (Ingredient chuẩn hoá + Recipe + RecipeIngredient + PlannedMeal).
@@ -89,11 +95,25 @@ export async function buildMenuContext(
   };
 }
 
-/** Lưu thực đơn AI xuống DB. Trả về danh sách id PlannedMeal vừa tạo. */
+/**
+ * Lưu thực đơn AI xuống DB. Trả về danh sách id PlannedMeal vừa tạo.
+ *
+ * `slots` là cơ cấu mâm ĐÃ YÊU CẦU (chính `ctx.slots` đã gửi cho AI). Truyền vào
+ * để mỗi PlannedMeal ghi lại số món đáng lẽ có cho ĐÚNG bữa đó — không suy lại
+ * được ở lúc đọc, vì số món người dùng chọn nằm trên GenerationJob và tính lại
+ * theo số người hiện tại sẽ báo nhầm mâm 2 món do chính họ chọn là "thiếu món".
+ * Bữa AI trả về ngoài danh sách đã yêu cầu thì `dishCount` để null — thà không
+ * cảnh báo còn hơn cảnh báo theo một con số bịa.
+ */
 export async function saveMenu(
   familyId: string,
   menu: AiMenu,
+  slots: MenuSlot[] = [],
 ): Promise<string[]> {
+  const plannedCountOf = new Map(
+    slots.map((s) => [`${s.date}|${s.mealType}`, s.dishRoles.length]),
+  );
+
   // Transaction ghi nhiều lượt tuần tự (upsert nguyên liệu + tạo recipe/plannedMeal)
   // với DB ở xa dễ vượt mốc mặc định 5s của Prisma -> "Transaction not found".
   // Nới maxWait/timeout để đủ thời gian cho thực đơn nhiều món.
@@ -114,6 +134,10 @@ export async function saveMenu(
           date: mealDate,
           mealType: meal.mealType,
           servings: meal.dishes[0]?.servings ?? 4,
+          // Tra bằng chuỗi ngày THÔ của AI (`meal.date`) chứ không qua mealDate:
+          // slot cũng mang chuỗi yyyy-mm-dd, so trực tiếp thì không phải lo lệch
+          // múi giờ khi Date quay ngược lại thành chuỗi.
+          dishCount: plannedCountOf.get(`${meal.date}|${meal.mealType}`) ?? null,
         },
       });
 

@@ -32,6 +32,10 @@ export async function recookAction(formData: FormData): Promise<void> {
         date: targetDate,
         mealType: source.mealType,
         servings: source.servings,
+        // Chép luôn số món đã hoạch định của mâm nguồn: nấu lại là chép nguyên
+        // mâm, nên "kế hoạch" của bản sao đúng bằng kế hoạch của bản gốc. Bỏ
+        // trống thì mâm nấu lại mất cảnh báo hụt món mà mâm gốc đang có.
+        dishCount: source.dishCount,
       },
     });
     // Copy MealDish: dùng lại recipeId cũ (an toàn — sửa sau này sinh Recipe mới).
