@@ -12,6 +12,8 @@ import {
   isExpired,
   EXPIRING_SOON_MS,
 } from "./pantry";
+import { normalizeIngredient } from "./normalize";
+import { SEASONINGS_VI, isSeasoning } from "@/data/seasonings";
 
 describe("matchKey", () => {
   it("bỏ dấu và hạ chữ thường", () => {
@@ -405,5 +407,59 @@ describe("seasonings: bẫy trùng dấu sau chuẩn hoá", () => {
   it("mè không bị coi là gia vị dù trùng normalize với 'me' (quả me)", () => {
     const needs = [{ name: "Mè", quantity: 50, unit: "g" }];
     expect(missingFor(needs, toPantrySet([])).map((n) => n.name)).toEqual(["Mè"]);
+  });
+});
+
+// SEASONINGS_VI giờ là nguồn CHÂN LÝ DUY NHẤT, viết có dấu, còn khoá so khớp thì
+// suy ra bằng normalizeIngredient. Hai test dưới canh đúng chỗ dễ vỡ của cách
+// làm đó: gõ nhầm dấu sẽ đổi khoá một cách âm thầm (không lỗi biên dịch, không
+// lỗi lint), và thêm nhầm một mục trùng dấu với nguyên liệu chính thì nguyên
+// liệu đó biến mất khỏi danh sách đi chợ mà không ai biết.
+describe("SEASONINGS_VI (nguồn chân lý có dấu)", () => {
+  it("mọi mục đều suy ra được khoá so khớp mà isSeasoning nhận ra", () => {
+    for (const vi of SEASONINGS_VI) {
+      const key = normalizeIngredient(vi);
+      expect(key, `"${vi}" chuẩn hoá ra rỗng`).not.toBe("");
+      expect(isSeasoning(key), `"${vi}" -> "${key}" không được nhận là gia vị`).toBe(
+        true,
+      );
+    }
+  });
+
+  it("không mục nào trùng khoá với nguyên liệu CHÍNH hay gặp", () => {
+    // "ngò" -> "ngo" đụng "ngô" (bắp); "mè" -> "me" đụng quả me nấu canh chua.
+    const keys = new Set(SEASONINGS_VI.map(normalizeIngredient));
+    for (const main of ["ngo", "me", "ca", "bo", "ga", "tom"]) {
+      expect(keys.has(main), `gia vị không được chiếm khoá "${main}"`).toBe(false);
+    }
+  });
+});
+
+describe("suggestFromPantry: minCoverage", () => {
+  const dishes = [
+    // phủ 100%: chỉ dùng cà chua + đậu phụ, còn lại là gia vị.
+    {
+      name: "Đậu sốt cà",
+      ingredients: [{ name: "đậu phụ" }, { name: "cà chua" }, { name: "hành lá" }],
+    },
+    // phủ 1/3: trùng đúng cà chua, còn thiếu thịt bò và cần tây.
+    {
+      name: "Bò xào cần tỏi",
+      ingredients: [{ name: "thịt bò" }, { name: "cần tây" }, { name: "cà chua" }],
+    },
+  ];
+  const pantry = toPantrySet(["đậu phụ", "cà chua"]);
+
+  it("mặc định (0) vẫn giữ món trùng một phần, xếp sau món phủ trọn", () => {
+    expect(suggestFromPantry(dishes, pantry).map((d) => d.name)).toEqual([
+      "Đậu sốt cà",
+      "Bò xào cần tỏi",
+    ]);
+  });
+
+  it("minCoverage=1 loại hẳn món không nấu trọn vẹn được bằng kho", () => {
+    expect(
+      suggestFromPantry(dishes, pantry, undefined, 12, 1).map((d) => d.name),
+    ).toEqual(["Đậu sốt cà"]);
   });
 });

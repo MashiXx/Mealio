@@ -1,5 +1,6 @@
 import type { MenuContext, EditContext, CatalogReference } from "./types";
 import { DISH_ROLE_LABEL } from "../enums";
+import { SEASONINGS_VI } from "@/data/seasonings";
 
 // Dựng prompt cho AI từ hồ sơ gia đình + kho thực phẩm + lịch sử.
 // Trả về { system, user } dùng chung cho cả Anthropic và OpenAI-compatible.
@@ -95,24 +96,68 @@ export function buildMenuPrompt(ctx: MenuContext): {
 
   // Kho vào prompt theo hai giọng khác hẳn nhau: AVAILABLE_ONLY biến kho thành
   // DANH SÁCH TRẮNG (luật cứng), FLEXIBLE chỉ nêu kho như gợi ý ưu tiên.
+  const availableOnly = ctx.pantryMode === "AVAILABLE_ONLY";
+
   const pantryNames = ctx.pantry.map(
     (x) => `  - ${x.name}${x.expiringSoon ? "  ⚠ nên dùng sớm" : ""}`,
   );
 
-  const pantryBlock =
-    ctx.pantryMode === "AVAILABLE_ONLY"
-      ? [
-          "NGUYÊN LIỆU ĐƯỢC PHÉP DÙNG — nhà chỉ có bấy nhiêu:",
-          pantryNames.join("\n") || "  (kho trống)",
-          "Gia vị luôn có, dùng thoải mái: mắm, muối, đường, dầu, tỏi, hành khô, tiêu.",
-          "",
-          "LUẬT CỨNG: KHÔNG dùng bất kỳ nguyên liệu nào ngoài hai danh sách trên.",
-          "Nghĩ món Việt quen thuộc từ đúng những thứ này.",
-        ].join("\n")
-      : [
-          "Thực phẩm nhà đang có (ưu tiên dùng, được phép mua thêm):",
-          pantryNames.join("\n") || "  (kho trống)",
-        ].join("\n");
+  const pantryBlock = availableOnly
+    ? [
+        "NGUYÊN LIỆU ĐƯỢC PHÉP DÙNG — nhà chỉ có bấy nhiêu:",
+        pantryNames.join("\n") || "  (kho trống)",
+        // In cả 36 mục có dấu từ nguồn chân lý chung với isSeasoning, thay vì
+        // liệt kê tay 7 thứ: bản cũ vô tình cấm gừng/sả/hành lá/chanh/ớt nên
+        // gần như không còn món canh hay món kho Việt nào hợp lệ.
+        `Gia vị luôn có, dùng thoải mái: ${SEASONINGS_VI.join(", ")}.`,
+        "",
+        "LUẬT CỨNG: KHÔNG dùng bất kỳ nguyên liệu nào ngoài hai danh sách trên.",
+        "Nghĩ món Việt quen thuộc từ đúng những thứ này.",
+        // Đặt SAU phần system bắt "đúng số món & vai trò" và nói thẳng là thắng
+        // luật đó: không có lối thoát này, một slot "Rau luộc" trong khi kho
+        // không còn cọng rau nào sẽ dồn model vào thế buộc phải bịa nguyên liệu.
+        // Đặc tả 4.4 vốn đã chấp nhận mâm thiếu món và có sẵn cảnh báo ở bảng chính.
+        "Nếu kho không đủ cho một vai trò món, BỎ HẲN vai trò đó và trả ít món hơn.",
+        "Luật này THẮNG yêu cầu 'đúng số món và đúng vai trò' nêu ở trên: thà thiếu",
+        "món còn hơn thay bằng nguyên liệu ngoài danh sách.",
+      ].join("\n")
+    : [
+        "Thực phẩm nhà đang có (ưu tiên dùng, được phép mua thêm):",
+        pantryNames.join("\n") || "  (kho trống)",
+      ].join("\n");
+
+  // Công thức cũ của gia đình gần như chắc chắn dùng nguyên liệu ngoài kho; mời
+  // tái sử dụng chúng ngay dưới một luật cứng là tự mâu thuẫn. Bỏ hẳn khối này
+  // ở chế độ danh sách trắng.
+  const availableRecipesBlock = availableOnly
+    ? ""
+    : [
+        "Công thức đã có trong kho gia đình (có thể tái sử dụng nếu phù hợp):",
+        ctx.availableRecipeNames.length
+          ? ctx.availableRecipeNames.map((n) => `  - ${n}`).join("\n")
+          : "  (chưa có)",
+      ].join("\n");
+
+  // Nhắc lại danh sách trắng ở DÒNG CUỐI, ngay trước câu chốt định dạng: luật
+  // đứng gần cuối được model tuân tốt hơn hẳn luật nằm giữa một prompt dài.
+  const pantryTail = availableOnly
+    ? [
+        `NHẮC LẠI — chỉ được dùng: ${ctx.pantry.map((x) => x.name).join(", ") || "(kho trống)"} + các gia vị kể trên.`,
+        "Món nào cần thứ khác thì BỎ món đó, đừng thay nguyên liệu.",
+      ].join("\n")
+    : "";
+
+  // Hai câu này lặp lại "đúng số món và vai trò" ở hai vị trí model đọc kỹ nhất
+  // (ngay trên danh sách bữa, và DÒNG CUỐI CÙNG của prompt). Ở AVAILABLE_ONLY
+  // chúng chọi thẳng với luật "thiếu nguyên liệu thì bỏ vai trò" — giữ nguyên
+  // thì lời cuối cùng model nghe được lại chính là lời xúi nó bịa nguyên liệu.
+  const slotsHeader = availableOnly
+    ? "Hãy lên MÂM CƠM cho các bữa sau. Vai trò ghi kèm là MỤC TIÊU, không phải hạn ngạch bắt buộc — kho không đủ thì trả ít món hơn:"
+    : "Hãy lên MÂM CƠM cho ĐÚNG các bữa sau — mỗi bữa đúng số món và vai trò ghi kèm:";
+
+  const closingLine = availableOnly
+    ? "Trả về JSON theo đúng cấu trúc: mỗi phần tử meals ứng một bữa, dishes chỉ gồm những món nấu được bằng danh sách nguyên liệu trên."
+    : "Trả về JSON theo đúng cấu trúc: mỗi phần tử meals ứng một bữa, dishes có đúng số món & vai trò yêu cầu.";
 
   const slotsText = ctx.slots
     .map((s) => {
@@ -144,19 +189,17 @@ export function buildMenuPrompt(ctx: MenuContext): {
       ? ctx.recentRecipeNames.map((n) => `  - ${n}`).join("\n")
       : "  (chưa có)",
     "",
-    "Công thức đã có trong kho gia đình (có thể tái sử dụng nếu phù hợp):",
-    ctx.availableRecipeNames.length
-      ? ctx.availableRecipeNames.map((n) => `  - ${n}`).join("\n")
-      : "  (chưa có)",
+    availableRecipesBlock,
     "",
-    "Hãy lên MÂM CƠM cho ĐÚNG các bữa sau — mỗi bữa đúng số món và vai trò ghi kèm:",
+    slotsHeader,
     slotsText,
     "",
     catalogReferenceText(ctx.catalogReference),
     // Câu nhắc khi sinh lại do mâm trước vi phạm kho; rỗng thì .filter bên dưới
     // tự loại, không để lại dòng trắng thừa.
     ctx.retryNote ?? "",
-    "Trả về JSON theo đúng cấu trúc: mỗi phần tử meals ứng một bữa, dishes có đúng số món & vai trò yêu cầu.",
+    pantryTail,
+    closingLine,
   ]
     .filter((l) => l !== "")
     .join("\n");

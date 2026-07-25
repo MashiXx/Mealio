@@ -75,16 +75,15 @@ export async function buildMenuContext(
       dishRoles: planMealStructure(s.mealType, members.length, dishCount),
     })),
     // Tham chiếu món Việt từ kho dùng chung, đã lọc theo dị ứng/kiêng khem và
-    // đẩy món hợp kho nhà lên trước.
-    catalogReference: buildCatalogReference(
-      menuMembers,
-      menuProfile,
-      18,
-      toPantrySet(pantry.map((p) => p.ingredient.name)),
-      kindLookupFrom(
+    // đẩy món hợp kho nhà lên trước. Ở AVAILABLE_ONLY, tham chiếu bị siết còn
+    // đúng các món nấu trọn vẹn được bằng kho — xem buildCatalogReference.
+    catalogReference: buildCatalogReference(menuMembers, menuProfile, {
+      pantry: toPantrySet(pantry.map((p) => p.ingredient.name)),
+      kindOf: kindLookupFrom(
         pantry.map((p) => ({ name: p.ingredient.name, kind: p.ingredient.kind })),
       ),
-    ),
+      onlyFullyCookable: pantryMode === "AVAILABLE_ONLY",
+    }),
     pantryMode,
     retryNote,
   };

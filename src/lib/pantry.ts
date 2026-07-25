@@ -133,12 +133,18 @@ export function mergeNeeds(needs: Need[]): Need[] {
  * `kindOf` mặc định tra bảng tĩnh (`staticKind`), nhưng cờ `Ingredient.kind` mà
  * gia đình tự đặt (truyền qua `kindLookupFrom`) ghi đè được: nguyên liệu bị đánh
  * SEASONING loại khỏi cả tử số lẫn mẫu số của tỉ lệ phủ.
+ *
+ * `minCoverage` biến hàm từ gợi ý mềm thành BỘ LỌC CỨNG: truyền 1 thì chỉ giữ
+ * món nấu trọn vẹn được bằng kho hiện có. Chế độ AVAILABLE_ONLY cần đúng điều
+ * này — gợi ý một món chỉ phủ 2/5 nguyên liệu là mời model phá luật danh sách
+ * trắng, vì món gợi ý trông như ví dụ được phép nấu.
  */
 export function suggestFromPantry<T extends { ingredients: { name: string }[] }>(
   dishes: T[],
   pantry: Set<string>,
   kindOf: KindLookup = staticKind,
   limit = 12,
+  minCoverage = 0,
 ): T[] {
   return dishes
     .map((d) => {
@@ -151,7 +157,7 @@ export function suggestFromPantry<T extends { ingredients: { name: string }[] }>
       const coverage = mainKeys.size > 0 ? hits / mainKeys.size : 0;
       return { d, hits, coverage };
     })
-    .filter((x) => x.hits > 0)
+    .filter((x) => x.hits > 0 && x.coverage >= minCoverage)
     .sort((a, b) => b.coverage - a.coverage || b.hits - a.hits)
     .slice(0, limit)
     .map((x) => x.d);

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireFamily } from "@/lib/tenant";
 import { prisma } from "@/lib/db";
 import { getActiveJob, pumpJobs } from "@/lib/jobs";
+import { matchKey, staticKind } from "@/lib/pantry";
 import type { MealTypeStr } from "@/lib/ai/types";
 
 export type GenerateState = { error?: string };
@@ -55,10 +56,23 @@ export async function startGenerationAction(
 
   // Chế độ "đồ có sẵn" mà kho rỗng thì không có gì để nấu — chặn ngay, đừng tạo
   // job. Chỉ đếm nguyên liệu MAIN: kho chỉ có mắm muối không phải là "có đồ".
+  //
+  // Phải đếm trong JS chứ KHÔNG lọc bằng `where: { ingredient: { kind: "MAIN" } }`:
+  // Ingredient.kind là nullable và addPantryItemAction CỐ Ý để NULL (chỉ nút "đổi
+  // nhóm" mới ghi giá trị cụ thể), mà SQL `kind = 'MAIN'` không khớp NULL. Lọc
+  // bằng SQL thì nhà nhập cả chục nguyên liệu nhưng chưa từng bấm "đổi nhóm" sẽ
+  // ra count = 0 và bị báo "kho trống" dù kho đầy, không có đường thoát. Kind
+  // hiệu lực = cờ của gia đình, thiếu thì tra bảng gia vị tĩnh — cùng cách tính
+  // với /pantry và actions/pantry.ts. Kho nhà tối đa vài chục dòng.
   if (pantryMode === "AVAILABLE_ONLY") {
-    const count = await prisma.pantryItem.count({
-      where: { familyId, ingredient: { kind: "MAIN" } },
+    const items = await prisma.pantryItem.findMany({
+      where: { familyId },
+      select: { ingredient: { select: { name: true, kind: true } } },
     });
+    const count = items.filter(
+      (i) =>
+        (i.ingredient.kind ?? staticKind(matchKey(i.ingredient.name))) === "MAIN",
+    ).length;
     if (count === 0) {
       return {
         error:
