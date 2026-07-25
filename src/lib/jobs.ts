@@ -2,6 +2,13 @@ import { prisma } from "./db";
 import { getAIProvider } from "./ai";
 import { buildMenuContext, saveMenu } from "./menu";
 import { buildEditContext, applyEdit } from "./edit";
+import {
+  toPantrySet,
+  kindLookupFrom,
+  verifyMenuAgainstPantry,
+  violationNote,
+} from "./pantry";
+import { syncShoppingFromMeals } from "./shopping";
 import type { MealTypeStr } from "./ai/types";
 import type { GenerationJob, EditJob } from "@prisma/client";
 
@@ -149,10 +156,60 @@ async function runGenerationJob(jobId: string): Promise<void> {
       mealType: mealType as MealTypeStr,
     }));
 
+    const mode = job.pantryMode as "AVAILABLE_ONLY" | "FLEXIBLE";
+    const ctx = await buildMenuContext(
+      job.familyId,
+      rawSlots,
+      job.dishCount,
+      mode,
+    );
+
+    // Job xếp hàng lúc kho còn đồ, tới lượt chạy thì người dùng đã dọn sạch kho.
+    // Prompt sẽ thành "nhà chỉ có bấy nhiêu: (kho trống)" kèm LUẬT CỨNG — vô
+    // nghĩa, mà một vòng Ollama trên CPU mất hàng phút. Dừng tại đây, nói thật lý
+    // do thay vì đốt thời gian rồi trả về mâm bịa. (Form đã chặn ca kho rỗng lúc
+    // tạo job; đây là ca kho bị dọn SAU đó, form không với tới được.)
+    if (mode === "AVAILABLE_ONLY" && ctx.pantry.length === 0) {
+      await prisma.generationJob.update({
+        where: { id: jobId },
+        data: {
+          status: "FAILED",
+          error:
+            "Kho nhà đã trống nên không nấu được bằng đồ có sẵn. Thêm nguyên liệu ở trang Kho nhà rồi tạo lại, hoặc chọn chế độ Thoải mái.",
+          finishedAt: new Date(),
+        },
+      });
+      return;
+    }
+
     const provider = await getAIProvider(job.familyId);
-    const ctx = await buildMenuContext(job.familyId, rawSlots, job.dishCount);
-    const menu = await provider.generateMenu(ctx);
-    await saveMenu(job.familyId, menu);
+    let menu = await provider.generateMenu(ctx);
+
+    // Model có thể phớt lờ luật cứng trong prompt -> code kiểm lại. Chỉ sinh lại
+    // MỘT lần: vi phạm hai lần thì giữ mâm còn hơn bắt người dùng chờ thêm một
+    // vòng Ollama trên CPU. Phần thiếu còn lại không làm hỏng mâm — nó chảy tiếp
+    // vào danh sách đi chợ ở syncShoppingFromMeals bên dưới.
+    if (mode === "AVAILABLE_ONLY") {
+      const pantryNames = ctx.pantry.map((p) => p.name);
+      const pantry = toPantrySet(pantryNames);
+      // Cờ kind của gia đình thắng bảng gia vị tĩnh: người dùng đã bấm "đổi nhóm"
+      // cho nguyên liệu nào thì ý họ phải có hiệu lực ở cả verify lẫn đi chợ.
+      const kindOf = kindLookupFrom(ctx.pantry);
+      const violations = verifyMenuAgainstPantry(menu, pantry, kindOf);
+      if (violations.length > 0) {
+        const retryCtx = await buildMenuContext(
+          job.familyId,
+          rawSlots,
+          job.dishCount,
+          mode,
+          violationNote(violations, pantryNames),
+        );
+        menu = await provider.generateMenu(retryCtx);
+      }
+    }
+
+    const plannedIds = await saveMenu(job.familyId, menu);
+    await syncShoppingFromMeals(job.familyId, plannedIds);
 
     await prisma.generationJob.update({
       where: { id: jobId },
