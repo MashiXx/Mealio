@@ -7,7 +7,10 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends openssl ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile
+# Cache mount giữ gói đã tải giữa các lần build: khi layer bị vô hiệu (Coolify hay
+# prune image), yarn vẫn cài từ đĩa thay vì tải lại toàn bộ từ registry.
+RUN --mount=type=cache,target=/root/.yarn-cache \
+    yarn install --frozen-lockfile --prefer-offline --cache-folder /root/.yarn-cache
 
 # ---- builder: prisma generate + next build (standalone) ----
 FROM node:22-slim AS builder
@@ -50,6 +53,10 @@ COPY --from=builder /prisma-cli/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 
 COPY --chmod=755 docker-entrypoint.sh ./docker-entrypoint.sh
+
+# COPY chạy bằng root nên /app/.next thuộc root; runtime Next ghi cache ảnh + ISR
+# vào .next/cache dưới user nextjs -> phải chuyển quyền, nếu không EACCES.
+RUN mkdir -p .next/cache && chown -R nextjs:nodejs .next
 
 USER nextjs
 EXPOSE 3000
