@@ -93,6 +93,28 @@ export async function addShoppingItemAction(formData: FormData): Promise<void> {
   revalidatePath("/shopping");
 }
 
+/**
+ * Xoá một dòng TỰ THÊM. Gõ nhầm thì trước đây mắc kẹt: lối thoát duy nhất là tick
+ * "đã mua" (đẩy luôn thứ gõ nhầm vào kho) hoặc đóng cả buổi chợ.
+ *
+ * Chỉ dòng manual mới có nút này. Dòng máy sinh không cần: syncShopping DỰNG LẠI
+ * trọn phần đó mỗi lần mâm đổi, nên xoá tay chỉ sống tới lượt đồng bộ kế tiếp rồi
+ * mọc lại — muốn nó biến mất thật thì sửa mâm hoặc thêm nguyên liệu vào kho.
+ */
+export async function removeShoppingItemAction(
+  formData: FormData,
+): Promise<void> {
+  const { familyId } = await requireFamily();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  // `manual: true` nằm trong where là chốt chặn thật, không phải chuyện trang trí:
+  // server action tới được bằng POST thẳng, không chỉ qua nút trên UI.
+  await prisma.shoppingItem.deleteMany({
+    where: { id, manual: true, shoppingList: { familyId } },
+  });
+  revalidatePath("/shopping");
+}
+
 /** Xong buổi chợ: đóng danh sách, lần sau sinh thực đơn sẽ mở danh sách mới. */
 export async function closeShoppingListAction(
   formData: FormData,

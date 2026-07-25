@@ -8,6 +8,11 @@ import {
   addDishAction,
   deleteDishAction,
 } from "@/lib/actions/edit";
+// Server action gọi từ client component: hợp lệ vì actions/cook.ts có "use server"
+// ở đầu FILE, nên import vào đây chỉ là một tham chiếu, không kéo code server sang
+// bundle client. Đi qua <form action={...}> thay vì onClick để bấm được cả khi JS
+// chưa hydrate xong.
+import { markCookedAction } from "@/lib/actions/cook";
 import { DishInfo } from "./DishInfo";
 
 type ChatTurn = { role: "user" | "assistant"; content: string };
@@ -28,6 +33,8 @@ export type MealView = {
   mealTypeLabel: string;
   servings: number;
   totalMinutes: number;
+  cooked: boolean;
+  expectedDishes: number; // số vai trò món đáng lẽ có — để cảnh báo mâm thiếu
   chatHistory: ChatTurn[];
   dishes: DishView[];
 };
@@ -126,6 +133,29 @@ export function MealCard({
           {meal.servings} người · {meal.dishes.length} món
           {meal.totalMinutes > 0 && ` · ~${meal.totalMinutes} phút`}
         </span>
+        {meal.cooked ? (
+          <span className="text-xs font-medium text-emerald-600">✓ đã nấu</span>
+        ) : (
+          <form action={markCookedAction}>
+            <input type="hidden" name="plannedMealId" value={meal.id} />
+            <button
+              type="submit"
+              disabled={anyBusy}
+              className="rounded border border-emerald-300 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+            >
+              Đã nấu
+            </button>
+          </form>
+        )}
+        {/* Mâm hụt món là chuyện BÌNH THƯỜNG ở chế độ "nấu bằng đồ có sẵn" (kho
+            chỉ còn trứng thì không nặn ra đủ mặn + canh + rau) — nói thật thay vì
+            lấp bừa, và chỉ ra hai lối thoát. */}
+        {meal.dishes.length < meal.expectedDishes && (
+          <span className="text-xs text-amber-600">
+            Kho hiện đủ nấu {meal.dishes.length}/{meal.expectedDishes} món. Thêm
+            đồ tươi vào kho, hoặc chuyển sang chế độ Thoải mái.
+          </span>
+        )}
         {mealBusy && (
           <span className="flex items-center gap-1 text-xs text-amber-600">
             <span className="h-3 w-3 animate-spin rounded-full border-2 border-amber-300 border-t-amber-600" />

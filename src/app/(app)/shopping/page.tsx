@@ -3,6 +3,7 @@ import { requireFamily } from "@/lib/tenant";
 import {
   togglePurchasedAction,
   addShoppingItemAction,
+  removeShoppingItemAction,
   closeShoppingListAction,
 } from "@/lib/actions/shopping";
 
@@ -114,6 +115,20 @@ export default async function ShoppingPage() {
               <span className="text-xs text-zinc-500">
                 {it.quantity} {it.unit}
               </span>
+              {/* Nút xoá CHỈ cho dòng tự thêm: gõ nhầm thì bỏ đi, không phải tick
+                  "đã mua" cho nó chui vào kho. Dòng máy sinh cố ý không có nút —
+                  syncShopping dựng lại phần đó nên xoá tay sẽ mọc lại ngay. */}
+              {it.manual && (
+                <form action={removeShoppingItemAction}>
+                  <input type="hidden" name="id" value={it.id} />
+                  <button
+                    aria-label={`Xoá "${it.ingredient.name}" khỏi danh sách`}
+                    className="text-xs text-zinc-400 hover:text-red-600"
+                  >
+                    xoá
+                  </button>
+                </form>
+              )}
             </li>
           ))}
         </ul>
