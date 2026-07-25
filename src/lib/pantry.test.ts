@@ -204,6 +204,35 @@ describe("suggestFromPantry", () => {
       "Trùng lặp cà chua",
     ]);
   });
+
+  it("kindOf loại nguyên liệu gia đình đánh SEASONING khỏi tỉ lệ phủ, có thể đổi cả thứ hạng", () => {
+    const pantry = toPantrySet(["cá thu", "đậu phụ"]);
+    const dishesWithRieng = [
+      {
+        name: "Cá thu kho riềng",
+        ingredients: [{ name: "cá thu" }, { name: "riềng" }],
+      },
+      {
+        name: "Cá thu sốt đậu cà rốt",
+        ingredients: [{ name: "cá thu" }, { name: "đậu phụ" }, { name: "cà rốt" }],
+      },
+    ];
+
+    // Mặc định: riềng tính là nguyên liệu chính còn thiếu -> "Cá thu kho riềng"
+    // chỉ phủ 1/2, thua "Cá thu sốt đậu cà rốt" phủ 2/3.
+    expect(suggestFromPantry(dishesWithRieng, pantry).map((d) => d.name)).toEqual([
+      "Cá thu sốt đậu cà rốt",
+      "Cá thu kho riềng",
+    ]);
+
+    // Gia đình đánh riềng là SEASONING (nút "đổi nhóm"): riềng bị loại khỏi mẫu
+    // số -> "Cá thu kho riềng" phủ 1/1 = 100%, vượt lên trước.
+    const kindOf = kindLookupFrom([{ name: "riềng", kind: "SEASONING" }]);
+    expect(suggestFromPantry(dishesWithRieng, pantry, kindOf).map((d) => d.name)).toEqual([
+      "Cá thu kho riềng",
+      "Cá thu sốt đậu cà rốt",
+    ]);
+  });
 });
 
 describe("verifyMenuAgainstPantry", () => {

@@ -3,7 +3,9 @@ import { canonicalIngredient } from "@/data/ingredient-aliases";
 import { isSeasoning } from "@/data/seasonings";
 
 // Logic thuần cho kho thực phẩm: khớp tên, tìm phần thiếu, gộp nhu cầu đi chợ,
-// gợi ý món theo nguyên liệu đang có. KHÔNG chạm DB để test được bằng vitest.
+// gợi ý món theo nguyên liệu đang có, verify mâm AI sinh theo kho, và cơ chế
+// kindOf/kindLookupFrom để cờ Ingredient.kind của gia đình ghi đè bảng gia vị
+// tĩnh. KHÔNG chạm DB để test được bằng vitest.
 
 export type Need = { name: string; quantity: number; unit: string };
 
@@ -45,6 +47,9 @@ export function kindLookupFrom(
  * hết chai tương đen thì app không nhắc, đổi lại không bị hỏi mua muối mỗi tuần.
  * Tên rỗng sau chuẩn hoá luôn coi là thiếu — không bao giờ được xem là "đang có",
  * kể cả khi (do lỗi dữ liệu ở đâu đó) tập kho lại chứa khoá rỗng.
+ * `kindOf` mặc định tra bảng tĩnh (`staticKind`), nhưng cờ `Ingredient.kind` mà
+ * gia đình tự đặt (truyền qua `kindLookupFrom`) ghi đè được theo cả hai chiều —
+ * đó là điều làm nút "đổi nhóm" trên trang kho có tác dụng thật.
  */
 export function missingFor(
   needs: Need[],
@@ -100,12 +105,15 @@ export function mergeNeeds(needs: Need[]): Need[] {
  * được trọn vẹn đứng trước món chỉ trùng vài thứ trong một danh sách dài; khai
  * lặp một nguyên liệu nhiều dòng không được thổi điểm. Hoà tỉ lệ phủ thì món
  * nhiều lượt trùng phân biệt hơn đứng trước.
+ * `kindOf` mặc định tra bảng tĩnh (`staticKind`), nhưng cờ `Ingredient.kind` mà
+ * gia đình tự đặt (truyền qua `kindLookupFrom`) ghi đè được: nguyên liệu bị đánh
+ * SEASONING loại khỏi cả tử số lẫn mẫu số của tỉ lệ phủ.
  */
 export function suggestFromPantry<T extends { ingredients: { name: string }[] }>(
   dishes: T[],
   pantry: Set<string>,
-  limit = 12,
   kindOf: KindLookup = staticKind,
+  limit = 12,
 ): T[] {
   return dishes
     .map((d) => {
@@ -149,6 +157,9 @@ function dedupeByMatchKey(needs: Need[]): Need[] {
  * trùng tên qua nhiều bữa (thực đơn 3 bữa lặp món) gộp thành MỘT Violation duy
  * nhất — nếu không, hai câu buộc tội mâu thuẫn nhau về cùng một món sẽ khiến
  * model rối khi chỉ còn một lượt sinh lại.
+ * `kindOf` mặc định tra bảng tĩnh (`staticKind`), nhưng cờ `Ingredient.kind` mà
+ * gia đình tự đặt (truyền qua `kindLookupFrom`) ghi đè được — truyền tiếp xuống
+ * `missingFor` nên nút "đổi nhóm" trên trang kho cũng tác động được tới verify.
  */
 export function verifyMenuAgainstPantry(
   menu: MenuLike,
