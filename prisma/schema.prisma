@@ -84,7 +84,6 @@ model Family {
   recipes        Recipe[]
   mealPlans      MealPlan[]
   plannedMeals   PlannedMeal[]
-  history        MealHistory[]
   shoppingLists  ShoppingList[]
   generationJobs GenerationJob[]
   editJobs       EditJob[]
@@ -225,7 +224,6 @@ model Recipe {
 
   ingredients RecipeIngredient[]
   mealDishes  MealDish[]
-  history     MealHistory[]
 
   @@index([familyId])
 }
@@ -281,7 +279,6 @@ model PlannedMeal {
 
   dishes      MealDish[]
   editJobs    EditJob[]
-  history     MealHistory[]
   chatHistory Json          @default("[]") // lịch sử chat cấp mâm: [{role, content}]
 
   @@unique([familyId, date, mealType])
@@ -336,33 +333,6 @@ enum MealType {
   BREAKFAST
   LUNCH
   DINNER
-}
-
-// ------------------------------------------------------------------
-// Lịch sử & phản hồi
-// ------------------------------------------------------------------
-
-model MealHistory {
-  id       String @id @default(cuid())
-  familyId String
-  family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
-
-  plannedMealId String?
-  plannedMeal   PlannedMeal? @relation(fields: [plannedMealId], references: [id], onDelete: SetNull)
-
-  recipeId String
-  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-
-  cookedAt DateTime @default(now())
-  rating   Rating   @default(NEUTRAL)
-
-  @@index([familyId, cookedAt])
-}
-
-enum Rating {
-  LIKE
-  NEUTRAL
-  DISLIKE
 }
 
 // ------------------------------------------------------------------
