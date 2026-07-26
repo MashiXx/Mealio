@@ -47,8 +47,13 @@ export function deriveDietConstraints(members: MenuMember[]): {
   return { excludeTags, vegetarianOnly };
 }
 
-/** Món có hợp lệ với ràng buộc ăn uống không. */
-function dishAllowed(
+/**
+ * Món có hợp lệ với ràng buộc ăn uống không.
+ *
+ * Xuất ra để expand-plan.ts dùng lại: đường lấy công thức từ catalog PHẢI đi qua
+ * đúng bộ lọc này, nếu không nó thành đường vòng qua bộ lọc dị ứng.
+ */
+export function isDishAllowed(
   d: CatalogDishData,
   excludeTags: Set<string>,
   vegetarianOnly: boolean,
@@ -96,7 +101,7 @@ export function buildCatalogReference(
   const { excludeTags, vegetarianOnly } = deriveDietConstraints(members);
 
   const allowed = allDishes.filter((d) =>
-    dishAllowed(d, excludeTags, vegetarianOnly),
+    isDishAllowed(d, excludeTags, vegetarianOnly),
   );
 
   // Nhà có cá thu thì gợi ý "cá thu kho" trước — model bám món Việt thật thay vì
@@ -167,7 +172,7 @@ export function buildCatalogReference(
     .filter((m) =>
       m.dishSlugs.every((slug) => {
         const d = getDishBySlug(slug);
-        return d && dishAllowed(d, excludeTags, vegetarianOnly);
+        return d && isDishAllowed(d, excludeTags, vegetarianOnly);
       }),
     )
     .filter(
