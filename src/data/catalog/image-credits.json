@@ -187,5 +187,61 @@
     "artist": "Phoenixcatering",
     "source": "https://commons.wikimedia.org/wiki/File:Tropical_Fruit_Platter.JPG",
     "title": "File:Tropical Fruit Platter.JPG"
+  },
+  "suon-xao-chua-ngot": {
+    "file": "/dishes/suon-xao-chua-ngot.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Blemo25",
+    "source": "https://commons.wikimedia.org/wiki/File:Suon_xao_chua_ngot_bac_ninh.jpg",
+    "title": "File:Suon xao chua ngot bac ninh.jpg"
+  },
+  "thit-rang-chay-canh": {
+    "file": "/dishes/thit-rang-chay-canh.jpg",
+    "license": "CC BY-SA 3.0",
+    "artist": "Buileducanh (thảo luận)",
+    "source": "https://commons.wikimedia.org/wiki/File:Thit_rang_chay_canh.jpg",
+    "title": "File:Thit rang chay canh.jpg"
+  },
+  "muc-xao-dua-can": {
+    "file": "/dishes/muc-xao-dua-can.jpg",
+    "license": "Public domain",
+    "artist": "Phương Huy (thảo luận)",
+    "source": "https://commons.wikimedia.org/wiki/File:M%C3%B3n_m%E1%BB%B1c_x%C3%A0o,_th%C3%A1ng_4_n%C4%83m_2018_(1).jpg",
+    "title": "File:Món mực xào, tháng 4 năm 2018 (1).jpg"
+  },
+  "dau-cove-xao-thit": {
+    "file": "/dishes/dau-cove-xao-thit.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Phương Huy",
+    "source": "https://commons.wikimedia.org/wiki/File:M%C3%B3n_%C4%83n_c%C3%BAng_m%E1%BB%93ng_2_T%E1%BA%BFt_2022_(%C4%91%E1%BA%ADu_c%C3%B4_ve_x%C3%A0o_c%C3%A0_r%E1%BB%91t)_(1).jpg",
+    "title": "File:Món ăn cúng mồng 2 Tết 2022 (đậu cô ve xào cà rốt) (1).jpg"
+  },
+  "nam-dui-ga-xao": {
+    "file": "/dishes/nam-dui-ga-xao.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Phương Huy",
+    "source": "https://commons.wikimedia.org/wiki/File:M%C3%B3n_%C4%83n_c%C3%BAng_%C4%91%C6%B0a,_T%E1%BA%BFt_2022_(m%C3%B3n_n%E1%BA%A5m_x%C3%A0o_chay)_(1).jpg",
+    "title": "File:Món ăn cúng đưa, Tết 2022 (món nấm xào chay) (1).jpg"
+  },
+  "canh-khoai-mo": {
+    "file": "/dishes/canh-khoai-mo.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "OlBoes",
+    "source": "https://commons.wikimedia.org/wiki/File:Canh_Khoai_M%E1%BB%A1.jpg",
+    "title": "File:Canh Khoai Mỡ.jpg"
+  },
+  "canh-mang-suon": {
+    "file": "/dishes/canh-mang-suon.jpg",
+    "license": "Public domain",
+    "artist": "Phương Huy at Vietnamese Wikipedia",
+    "source": "https://commons.wikimedia.org/wiki/File:Canh_m%C4%83ng_h%E1%BA%A7m_th%E1%BB%8Bt_heo.jpg",
+    "title": "File:Canh măng hầm thịt heo.jpg"
+  },
+  "rau-cau-dua": {
+    "file": "/dishes/rau-cau-dua.jpg",
+    "license": "Public domain",
+    "artist": "Phương Huy (thảo luận)",
+    "source": "https://commons.wikimedia.org/wiki/File:Rau_c%C3%A2u_d%E1%BB%ABa_t%C6%B0%C6%A1i_%E1%BB%9F_BiC_Ph%C3%BA_Th%E1%BA%A1nh_th%C3%A1ng_10_n%C4%83m_2018_(1).jpg",
+    "title": "File:Rau câu dừa tươi ở BiC Phú Thạnh tháng 10 năm 2018 (1).jpg"
   }
 }

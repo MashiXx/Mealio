@@ -3,6 +3,9 @@
 import { useMemo, useState, useTransition } from "react";
 import Image from "next/image";
 import { adoptCatalogDishAction } from "@/lib/actions/catalog";
+import { DishPhoto } from "../dashboard/DishPhoto";
+import { ROLE_VISUAL, pickHeroDish } from "@/lib/dish-image";
+import { DISH_ROLE_LABEL } from "@/lib/enums";
 
 // Dữ liệu món dạng phẳng truyền từ server (đã tuần tự hoá được).
 export interface BrowseDish {
@@ -17,6 +20,7 @@ export interface BrowseDish {
   tags: string[];
   notes: string | null;
   imageUrl: string | null;
+  imageCredit: string | null;
   steps: string[];
   ingredients: { name: string; quantity: number; unit: string }[];
 }
@@ -28,20 +32,17 @@ export interface BrowseSetMenu {
   region: string;
   servings: number;
   note: string | null;
-  dishNames: string[];
+  dishes: { slug: string; name: string; dishRole: string }[];
 }
 
-const ROLE_META: Record<string, { label: string; emoji: string }> = {
-  MON_MAN: { label: "Món mặn", emoji: "🍖" },
-  MON_XAO: { label: "Món xào", emoji: "🥘" },
-  CANH_SUP: { label: "Canh & súp", emoji: "🍲" },
-  RAU_LUOC: { label: "Rau & gỏi", emoji: "🥗" },
-  LAU: { label: "Lẩu", emoji: "🍲" },
-  COM_BUN_PHO: { label: "Cơm, bún, phở", emoji: "🍜" },
-  MON_CUON: { label: "Món cuốn", emoji: "🌯" },
-  TRANG_MIENG: { label: "Tráng miệng", emoji: "🍧" },
-  DO_CHUA: { label: "Đồ chua", emoji: "🥬" },
-};
+// Emoji lấy từ ROLE_VISUAL, nhãn lấy từ DISH_ROLE_LABEL — cả hai đều là nguồn
+// dùng chung toàn app, không giữ bản sao cục bộ ở đây nữa.
+function roleEmoji(role: string): string {
+  return ROLE_VISUAL[role]?.emoji ?? "🍽️";
+}
+function roleLabel(role: string): string {
+  return DISH_ROLE_LABEL[role] ?? role;
+}
 
 const REGION_LABEL: Record<string, string> = {
   MIEN_BAC: "Miền Bắc",
@@ -101,7 +102,6 @@ function AdoptButton({ slug }: { slug: string }) {
 }
 
 function DishCard({ dish }: { dish: BrowseDish }) {
-  const meta = ROLE_META[dish.dishRole] ?? { label: dish.dishRole, emoji: "🍽️" };
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white">
       <div className="relative aspect-[4/3] w-full bg-zinc-100">
@@ -115,11 +115,11 @@ function DishCard({ dish }: { dish: BrowseDish }) {
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-5xl opacity-40">
-            {meta.emoji}
+            {roleEmoji(dish.dishRole)}
           </div>
         )}
         <span className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-medium text-zinc-600">
-          {meta.emoji} {meta.label}
+          {roleEmoji(dish.dishRole)} {roleLabel(dish.dishRole)}
         </span>
       </div>
 
@@ -172,6 +172,13 @@ function DishCard({ dish }: { dish: BrowseDish }) {
             </div>
           </div>
         </details>
+
+        {/* Ghi công nguồn ảnh: bắt buộc với giấy phép CC BY / CC BY-SA. */}
+        {dish.imageUrl && dish.imageCredit && (
+          <p className="mt-2 text-[10px] leading-tight text-zinc-400">
+            Ảnh: {dish.imageCredit}
+          </p>
+        )}
 
         <div className="mt-3 flex items-center justify-between">
           {dish.tags.includes("chay") && (
@@ -235,7 +242,7 @@ export function CatalogBrowser({
         <div className="flex flex-wrap gap-2">
           {roleTabs.map((r) => {
             const active = role === r;
-            const label = r === "ALL" ? "Tất cả" : ROLE_META[r]?.label ?? r;
+            const label = r === "ALL" ? "Tất cả" : roleLabel(r);
             return (
               <button
                 key={r}
@@ -247,7 +254,7 @@ export function CatalogBrowser({
                     : "border-zinc-300 text-zinc-600 hover:border-zinc-400"
                 }`}
               >
-                {r === "ALL" ? "" : ROLE_META[r]?.emoji + " "}
+                {r === "ALL" ? "" : roleEmoji(r) + " "}
                 {label}
               </button>
             );
@@ -301,25 +308,59 @@ export function CatalogBrowser({
           Combo món cho một bữa hoàn chỉnh (cơm trắng đi kèm).
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {setMenus.map((m) => (
-            <div
-              key={m.slug}
-              className="rounded-2xl border border-zinc-200 bg-white p-4"
-            >
-              <div className="flex items-baseline justify-between gap-2">
-                <h3 className="font-semibold text-zinc-900">{m.name}</h3>
-                <span className="shrink-0 text-xs text-zinc-400">
-                  {m.servings} người
-                </span>
+          {setMenus.map((m) => {
+            const hero = pickHeroDish(
+              m.dishes.map((d) => ({
+                id: d.slug,
+                name: d.name,
+                dishRole: d.dishRole,
+              })),
+            );
+            const others = m.dishes.filter((d) => d.slug !== hero?.id);
+            return (
+              <div
+                key={m.slug}
+                className="overflow-hidden rounded-2xl border border-zinc-200 bg-white"
+              >
+                {hero && (
+                  <div className="relative">
+                    <DishPhoto
+                      name={hero.name}
+                      dishRole={hero.dishRole}
+                      size="hero"
+                    />
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3">
+                      <h3 className="font-semibold text-white drop-shadow">
+                        {m.name}
+                      </h3>
+                      <p className="text-xs text-white/80">{m.servings} người</p>
+                    </div>
+                  </div>
+                )}
+                <div className="p-4">
+                  {others.length > 0 && (
+                    <div className="grid grid-cols-4 gap-2">
+                      {others.map((d) => (
+                        <div key={d.slug}>
+                          <DishPhoto
+                            name={d.name}
+                            dishRole={d.dishRole}
+                            size="thumb"
+                          />
+                          <p className="mt-1 truncate text-[11px] text-zinc-600">
+                            {d.name}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {m.note && (
+                    <p className="mt-2 text-xs text-zinc-400">{m.note}</p>
+                  )}
+                </div>
               </div>
-              <p className="mt-1 text-sm text-zinc-600">
-                {m.dishNames.join(" · ")}
-              </p>
-              {m.note && (
-                <p className="mt-1.5 text-xs text-zinc-400">{m.note}</p>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

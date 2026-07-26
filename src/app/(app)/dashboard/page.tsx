@@ -258,6 +258,7 @@ export default async function DashboardPage({
                     dishes: meal.dishes.map((d) => ({
                       id: d.id,
                       roleLabel: DISH_ROLE_LABEL[d.dishRole] ?? d.dishRole,
+                      dishRole: d.dishRole,
                       name: d.recipe.name,
                       cookMinutes: d.recipe.cookMinutes,
                       nutritionLabels: d.recipe.nutritionLabels,

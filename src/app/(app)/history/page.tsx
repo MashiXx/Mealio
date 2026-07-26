@@ -4,6 +4,8 @@ import { requireFamily } from "@/lib/tenant";
 import { MEAL_TYPE_LABEL, DISH_ROLE_LABEL } from "@/lib/enums";
 import { recookAction } from "@/lib/actions/recook";
 import { DishInfo } from "../dashboard/DishInfo";
+import { DishPhoto, DishPhotoCredit } from "../dashboard/DishPhoto";
+import { pickHeroDish } from "@/lib/dish-image";
 
 const MEAL_RANK: Record<string, number> = { BREAKFAST: 0, LUNCH: 1, DINNER: 2 };
 const PAGE_SIZE = 60;
@@ -141,6 +143,51 @@ export default async function HistoryPage({
                           </button>
                         </form>
                       </div>
+                      {/* Phần đầu thị giác: ảnh bìa + lưới món. Trang này là
+                          server component nên KHÔNG có panel bấm-để-chọn như
+                          dashboard — danh sách chi tiết bên dưới giữ nguyên. */}
+                      {(() => {
+                        const cands = meal.dishes.map((d) => ({
+                          id: d.id,
+                          name: d.recipe.name,
+                          dishRole: d.dishRole as string,
+                        }));
+                        const hero = pickHeroDish(cands);
+                        if (!hero) return null;
+                        const others = cands.filter((c) => c.id !== hero.id);
+                        return (
+                          <div className="mb-3 space-y-2">
+                            <div className="relative">
+                              <DishPhoto
+                                name={hero.name}
+                                dishRole={hero.dishRole}
+                                size="hero"
+                              />
+                              <div className="absolute inset-x-0 bottom-0 rounded-b-xl bg-gradient-to-t from-black/70 to-transparent p-3">
+                                <h4 className="font-semibold text-white drop-shadow">
+                                  {hero.name}
+                                </h4>
+                              </div>
+                            </div>
+                            {others.length > 0 && (
+                              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                {others.map((c) => (
+                                  <div key={c.id}>
+                                    <DishPhoto
+                                      name={c.name}
+                                      dishRole={c.dishRole}
+                                      size="thumb"
+                                    />
+                                    <p className="mt-1 truncate text-xs font-medium text-zinc-700">
+                                      {c.name}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                       <div className="space-y-3">
                         {meal.dishes.map((dish) => (
                           <div
@@ -160,6 +207,10 @@ export default async function HistoryPage({
                                 ),
                                 steps: dish.recipe.steps,
                               }}
+                            />
+                            <DishPhotoCredit
+                              name={dish.recipe.name}
+                              dishRole={dish.dishRole}
                             />
                           </div>
                         ))}

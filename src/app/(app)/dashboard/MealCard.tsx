@@ -14,12 +14,16 @@ import {
 // chưa hydrate xong.
 import { markCookedAction } from "@/lib/actions/cook";
 import { DishInfo } from "./DishInfo";
+import { DishPhoto, DishPhotoCredit } from "./DishPhoto";
+import { pickHeroDish } from "@/lib/dish-image";
 
 type ChatTurn = { role: "user" | "assistant"; content: string };
 
 export type DishView = {
   id: string;
   roleLabel: string;
+  /** mã vai trò thô (MON_MAN, CANH_SUP…) — cần cho việc khớp ảnh, khác roleLabel. */
+  dishRole: string;
   name: string;
   cookMinutes: number;
   nutritionLabels: string[];
@@ -123,6 +127,16 @@ export function MealCard({
   const busySet = new Set(busyDishIds);
   const anyBusy = pending || mealBusy;
 
+  const hero = pickHeroDish(meal.dishes);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Món đang chọn; mặc định là hero. Nếu món đang chọn vừa bị xoá thì rơi về hero.
+  const selected =
+    meal.dishes.find((d) => d.id === selectedId) ??
+    hero ??
+    meal.dishes[0] ??
+    null;
+  const others = meal.dishes.filter((d) => d.id !== hero?.id);
+
   const run = (fn: () => Promise<void>) => startTransition(() => void fn());
 
   return (
@@ -171,25 +185,86 @@ export function MealCard({
         )}
       </div>
 
-      <div className="space-y-3">
-        {meal.dishes.map((dish) => {
-          const dishBusy = busySet.has(dish.id) || pending;
-          return (
-            <div
-              key={dish.id}
-              className={`rounded-lg border border-zinc-200 bg-white p-3 ${busySet.has(dish.id) ? "opacity-60" : ""}`}
-            >
+      {hero && (
+        <div className="space-y-3">
+          {/* Ảnh bìa mâm: món chính, bấm được để mở panel chi tiết. */}
+          <button
+            type="button"
+            onClick={() => setSelectedId(hero.id)}
+            className={`block w-full text-left transition-opacity ${
+              busySet.has(hero.id) ? "opacity-60" : ""
+            } ${selected?.id === hero.id ? "rounded-xl ring-2 ring-emerald-400" : ""}`}
+          >
+            <div className="relative">
+              <DishPhoto name={hero.name} dishRole={hero.dishRole} size="hero" />
+              <div className="absolute inset-x-0 bottom-0 rounded-b-xl bg-gradient-to-t from-black/70 to-transparent p-3">
+                <span className="rounded bg-white/90 px-1.5 py-0.5 text-[11px] font-medium text-zinc-600">
+                  {hero.roleLabel}
+                </span>
+                <h4 className="mt-1 font-semibold text-white drop-shadow">
+                  {hero.name}
+                </h4>
+              </div>
+              {busySet.has(hero.id) && (
+                <span className="absolute right-3 top-3 h-5 w-5 animate-spin rounded-full border-2 border-white/50 border-t-white" />
+              )}
+            </div>
+          </button>
+
+          {/* Các món còn lại */}
+          {others.length > 0 && (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {others.map((dish) => (
+                <button
+                  key={dish.id}
+                  type="button"
+                  onClick={() => setSelectedId(dish.id)}
+                  className={`text-left transition-opacity ${
+                    busySet.has(dish.id) ? "opacity-60" : ""
+                  }`}
+                >
+                  <div className="relative">
+                    <DishPhoto
+                      name={dish.name}
+                      dishRole={dish.dishRole}
+                      size="thumb"
+                      className={
+                        selected?.id === dish.id ? "ring-2 ring-emerald-400" : ""
+                      }
+                    />
+                    {busySet.has(dish.id) && (
+                      <span className="absolute right-1.5 top-1.5 h-4 w-4 animate-spin rounded-full border-2 border-white/50 border-t-white" />
+                    )}
+                  </div>
+                  <p className="mt-1 truncate text-xs font-medium text-zinc-700">
+                    {dish.name}
+                  </p>
+                  <p className="truncate text-[11px] text-zinc-400">
+                    {dish.roleLabel}
+                  </p>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Panel chi tiết của món đang chọn */}
+          {selected && (
+            <div className="rounded-lg border border-zinc-200 bg-white p-3">
               <DishInfo
                 dish={{
-                  roleLabel: dish.roleLabel,
-                  name: dish.name,
-                  cookMinutes: dish.cookMinutes,
-                  nutritionLabels: dish.nutritionLabels,
-                  ingredients: dish.ingredients,
-                  steps: dish.steps,
+                  roleLabel: selected.roleLabel,
+                  name: selected.name,
+                  cookMinutes: selected.cookMinutes,
+                  nutritionLabels: selected.nutritionLabels,
+                  ingredients: selected.ingredients,
+                  steps: selected.steps,
                 }}
               />
-              {busySet.has(dish.id) && (
+              <DishPhotoCredit
+                name={selected.name}
+                dishRole={selected.dishRole}
+              />
+              {busySet.has(selected.id) && (
                 <p className="mt-1 flex items-center gap-1 text-xs text-amber-600">
                   <span className="h-3 w-3 animate-spin rounded-full border-2 border-amber-300 border-t-amber-600" />
                   đang cập nhật…
@@ -202,8 +277,8 @@ export function MealCard({
                   <button
                     key={q.kind}
                     type="button"
-                    disabled={dishBusy}
-                    onClick={() => run(() => quickEditAction(dish.id, q.kind))}
+                    disabled={busySet.has(selected.id) || pending}
+                    onClick={() => run(() => quickEditAction(selected.id, q.kind))}
                     className="rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:border-emerald-400 disabled:opacity-50"
                   >
                     {q.label}
@@ -218,8 +293,10 @@ export function MealCard({
                       <button
                         key={t.kind}
                         type="button"
-                        disabled={dishBusy}
-                        onClick={() => run(() => quickEditAction(dish.id, t.kind))}
+                        disabled={busySet.has(selected.id) || pending}
+                        onClick={() =>
+                          run(() => quickEditAction(selected.id, t.kind))
+                        }
                         className="whitespace-nowrap rounded px-2 py-1 text-left text-xs text-zinc-600 hover:bg-zinc-100 disabled:opacity-50"
                       >
                         {t.label}
@@ -229,9 +306,9 @@ export function MealCard({
                 </details>
                 <button
                   type="button"
-                  disabled={dishBusy}
+                  disabled={busySet.has(selected.id) || pending}
                   onClick={() =>
-                    setOpenChat(openChat === dish.id ? null : dish.id)
+                    setOpenChat(openChat === selected.id ? null : selected.id)
                   }
                   className="rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:border-emerald-400 disabled:opacity-50"
                 >
@@ -239,10 +316,12 @@ export function MealCard({
                 </button>
                 <button
                   type="button"
-                  disabled={dishBusy || meal.dishes.length <= 1}
+                  disabled={
+                    busySet.has(selected.id) || pending || meal.dishes.length <= 1
+                  }
                   onClick={() => {
-                    if (confirm(`Xóa món "${dish.name}"?`))
-                      run(() => deleteDishAction(dish.id));
+                    if (confirm(`Xóa món "${selected.name}"?`))
+                      run(() => deleteDishAction(selected.id));
                   }}
                   className="rounded border border-red-200 px-2 py-1 text-xs text-red-500 hover:bg-red-50 disabled:opacity-40"
                 >
@@ -250,17 +329,17 @@ export function MealCard({
                 </button>
               </div>
 
-              {openChat === dish.id && (
+              {openChat === selected.id && (
                 <ChatBox
-                  history={dish.chatHistory}
-                  busy={dishBusy}
-                  onSend={(m) => run(() => chatDishAction(dish.id, m))}
+                  history={selected.chatHistory}
+                  busy={busySet.has(selected.id) || pending}
+                  onSend={(m) => run(() => chatDishAction(selected.id, m))}
                 />
               )}
             </div>
-          );
-        })}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Cấp mâm: thêm món + chat mâm */}
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
