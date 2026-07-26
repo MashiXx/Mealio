@@ -70,6 +70,25 @@ function membersBlock(members: MenuContext["members"]): string {
   );
 }
 
+/**
+ * Câu luật cho phần SYSTEM về ý muốn riêng của người dùng.
+ *
+ * Bắt buộc đi kèm mỗi khi prompt có userNote: người dùng gõ "nay thèm tôm" mà
+ * nhà có người dị ứng hải sản thì tôm VẪN phải bị loại. Đặt ở system (nơi chứa
+ * luật an toàn) chứ không ở user (nơi chứa ý muốn) để thứ tự ưu tiên rõ ràng.
+ */
+const USER_NOTE_RULE =
+  "- Ý muốn riêng của người dùng cho lần này chỉ được điều chỉnh TRONG PHẠM VI các luật an toàn ở trên. Nếu nó mâu thuẫn với dị ứng hoặc kiêng khem, LUẬT AN TOÀN THẮNG.";
+
+/** Khối ý muốn riêng cho phần USER. Trả "" khi không có gợi ý. */
+function userNoteBlock(note: string | null | undefined): string {
+  if (!note) return "";
+  return [
+    "Ý muốn riêng của người dùng CHO LẦN NÀY (ưu tiên cao, nhưng không được phá luật dị ứng/kiêng khem):",
+    `  ${note}`,
+  ].join("\n");
+}
+
 /** Bảng slot "ngày · bữa: N món — vai trò" dùng chung cho hai prompt. */
 function slotsBlock(slots: MenuContext["slots"]): string {
   return slots
@@ -92,6 +111,7 @@ export function buildMenuPrompt(ctx: MenuContext): {
     "- Tôn trọng các kiêng khem (ăn chay, không thịt bò, v.v.).",
     "- Ưu tiên món/nguyên liệu hợp khẩu vị, tránh món bị ghét.",
     "- Không lặp lại các món đã ăn gần đây.",
+    ...(ctx.userNote ? [USER_NOTE_RULE] : []),
     "QUY TẮC CÂN BẰNG CẢ MÂM (chuyên môn):",
     "- Mỗi mâm phải cân đối nhóm chất: đủ đạm (món mặn), rau xanh (xào/luộc/canh), tinh bột (cơm trắng ngầm định, KHÔNG cần liệt kê).",
     "- Đa dạng phương pháp chế biến trong một mâm — KHÔNG hai món cùng kiểu (tránh 2 món chiên/rán).",
@@ -192,6 +212,8 @@ export function buildMenuPrompt(ctx: MenuContext): {
     `  - Mục tiêu healthy: ${p.healthGoals.length ? p.healthGoals.join(", ") : "cân bằng chung"}`,
     p.notes ? `  - Ghi chú: ${p.notes}` : "",
     "",
+    userNoteBlock(ctx.userNote),
+    "",
     pantryBlock,
     "",
     "Món đã ăn gần đây (TRÁNH lặp lại):",
@@ -246,6 +268,7 @@ export function buildWeekPlanPrompt(ctx: MenuContext): {
     "- TUYỆT ĐỐI không dùng nguyên liệu gây dị ứng của bất kỳ thành viên nào.",
     "- Tôn trọng các kiêng khem (ăn chay, không thịt bò, v.v.).",
     "- Ưu tiên món hợp khẩu vị, tránh món bị ghét.",
+    ...(ctx.userNote ? [USER_NOTE_RULE] : []),
     "QUY TẮC CẢ ĐỢT (đây là lý do bạn được xem hết các ngày cùng lúc):",
     "- KHÔNG có hai món trùng tên trong toàn bộ khoảng ngày (riêng đồ chua ăn kèm thì được lặp).",
     "- Món mặn của hai ngày LIỀN NHAU phải khác đạm chính.",
@@ -261,6 +284,8 @@ export function buildWeekPlanPrompt(ctx: MenuContext): {
     "",
     "Thành viên & sở thích:",
     membersBlock(ctx.members),
+    "",
+    userNoteBlock(ctx.userNote),
     "",
     "Hồ sơ ăn uống:",
     `  - Khẩu vị vùng: ${REGION_LABEL[p.cuisineRegion] ?? p.cuisineRegion}`,

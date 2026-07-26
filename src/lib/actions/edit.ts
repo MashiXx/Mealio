@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireFamily } from "@/lib/tenant";
 import { prisma } from "@/lib/db";
 import { pumpJobs } from "@/lib/jobs";
+import { syncShopping } from "@/lib/shopping";
 import type { ChatTurn } from "@/lib/ai/types";
 
 // Lệnh dựng sẵn cho các nút thao tác nhanh (một-shot, không dùng lịch sử chat).
@@ -167,6 +168,9 @@ export async function deleteDishAction(mealDishId: string): Promise<void> {
   });
   if (count <= 1) return;
   await prisma.mealDish.delete({ where: { id: mealDishId } });
+  // Thiếu bước này thì nguyên liệu của món vừa xoá vẫn nằm trong danh sách đi
+  // chợ tới lượt đồng bộ sau — mọi đường ghi khác trong repo đều gọi syncShopping.
+  await syncShopping(familyId);
   revalidatePath("/dashboard");
 }
 

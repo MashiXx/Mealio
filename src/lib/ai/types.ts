@@ -98,6 +98,14 @@ export interface MenuContext {
    * khiến mọi lời gọi nở trông như một lần sinh lại sau lỗi.
    */
   planContext?: string | null;
+  /**
+   * Ý muốn riêng cho LẦN NÀY do người dùng gõ ("nay thèm đồ ngọt").
+   *
+   * KHÔNG được thắng luật dị ứng/kiêng khem — xem cách đặt trong prompt: nó nằm
+   * ở phần user dưới nhãn "ý muốn", còn luật an toàn nằm ở phần system kèm câu
+   * nói rõ luật an toàn thắng khi mâu thuẫn.
+   */
+  userNote?: string | null;
 }
 
 /** Ngữ cảnh cho một lần SỬA mâm (per-món hoặc cả mâm). */
