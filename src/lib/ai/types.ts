@@ -1,4 +1,9 @@
-import type { AiMenu, AiEditResult, MemberRecognition } from "./schema";
+import type {
+  AiMenu,
+  AiWeekPlan,
+  AiEditResult,
+  MemberRecognition,
+} from "./schema";
 
 export type ImageMediaType =
   | "image/jpeg"
@@ -117,6 +122,12 @@ export interface TestConnectionResult {
 
 /** Giao diện chung cho mọi nhà cung cấp AI (adapter). */
 export interface AIProvider {
+  /**
+   * Pha 1 của sinh nhiều ngày: khung cho cả khoảng (chỉ tên món + vai trò + đạm
+   * chính + nhãn dinh dưỡng). Cho model thấy trọn khoảng ngày trong một lượt mà
+   * output vẫn nhỏ hơn một ngày đầy đủ công thức.
+   */
+  generateWeekPlan(ctx: MenuContext): Promise<AiWeekPlan>;
   generateMenu(ctx: MenuContext): Promise<AiMenu>;
   editMeal(ctx: EditContext): Promise<AiEditResult>;
   recognizeMember(image: MemberImage): Promise<MemberRecognition>;

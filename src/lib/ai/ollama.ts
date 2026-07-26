@@ -5,12 +5,19 @@ import type {
   MemberImage,
   TestConnectionResult,
 } from "./types";
-import { buildMenuPrompt, buildEditPrompt, buildRecognitionPrompt } from "./prompt";
+import {
+  buildMenuPrompt,
+  buildWeekPlanPrompt,
+  buildEditPrompt,
+  buildRecognitionPrompt,
+} from "./prompt";
 import {
   parseMenuJson,
+  parseWeekPlanJson,
   parseEditJson,
   parseRecognitionJson,
   type AiMenu,
+  type AiWeekPlan,
   type AiEditResult,
   type MemberRecognition,
 } from "./schema";
@@ -104,6 +111,15 @@ export class OllamaProvider implements AIProvider {
         .map((m) => m.name)
         .filter((n): n is string => Boolean(n)),
     };
+  }
+
+  async generateWeekPlan(ctx: MenuContext): Promise<AiWeekPlan> {
+    const { system, user } = buildWeekPlanPrompt(ctx);
+    const content = await this.chat([
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ]);
+    return parseWeekPlanJson(content);
   }
 
   async generateMenu(ctx: MenuContext): Promise<AiMenu> {
