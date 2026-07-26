@@ -1,247 +1,247 @@
-﻿{
-    "pho-bo":  {
-                   "file":  "/dishes/pho-bo.jpg",
-                   "license":  "CC BY-SA 4.0",
-                   "artist":  "Kritzolina",
-                   "source":  "https://commons.wikimedia.org/wiki/File:Ph%E1%BB%9F_b%C3%B2_in_a_German_restaurant_02.jpg",
-                   "title":  "File:Phở bò in a German restaurant 02.jpg"
-               },
-    "bun-cha":  {
-                    "file":  "/dishes/bun-cha.jpg",
-                    "license":  "CC BY-SA 2.0",
-                    "artist":  "Larry",
-                    "source":  "https://commons.wikimedia.org/wiki/File:B%C3%BAn_ch%E1%BA%A3_H%C3%A0ng_M%C3%A0nh.jpg",
-                    "title":  "File:Bún chả Hàng Mành.jpg"
-                },
-    "thit-kho-tau":  {
-                         "file":  "/dishes/thit-kho-tau.jpg",
-                         "license":  "CC BY-SA 4.0",
-                         "artist":  "Viethavvh",
-                         "source":  "https://commons.wikimedia.org/wiki/File:Th%E1%BB%8Bt_kho_T%C3%A0u.jpg",
-                         "title":  "File:Thịt kho Tàu.jpg"
-                     },
-    "ca-kho-to":  {
-                      "file":  "/dishes/ca-kho-to.jpg",
-                      "license":  "CC BY-SA 2.0",
-                      "artist":  "Charles Haynes",
-                      "source":  "https://commons.wikimedia.org/wiki/File:C%C3%A1_kho_t%E1%BB%99,_c%C3%A1_h%C3%BA.jpg",
-                      "title":  "File:Cá kho tộ, cá hú.jpg"
-                  },
-    "goi-cuon-tom-thit":  {
-                              "file":  "/dishes/goi-cuon-tom-thit.jpg",
-                              "license":  "CC BY-SA 4.0",
-                              "artist":  "N509FZ",
-                              "source":  "https://commons.wikimedia.org/wiki/File:G%E1%BB%8Fi_cu%E1%BB%91n_at_a_Vietnamese-style_restaurant_in_Beijing_(20180103175625).jpg",
-                              "title":  "File:Gỏi cuốn at a Vietnamese-style restaurant in Beijing (20180103175625).jpg"
-                          },
-    "nem-ran":  {
-                    "file":  "/dishes/nem-ran.jpg",
-                    "license":  "CC BY 2.0",
-                    "artist":  "amrufm",
-                    "source":  "https://commons.wikimedia.org/wiki/File:Cha_gio.jpg",
-                    "title":  "File:Cha gio.jpg"
-                },
-    "com-tam-suon":  {
-                         "file":  "/dishes/com-tam-suon.jpg",
-                         "license":  "CC BY-SA 4.0",
-                         "artist":  "Christopher Crouzet",
-                         "source":  "https://commons.wikimedia.org/wiki/File:C%C6%A1m_T%E1%BA%A5m,_Da_Nang,_Vietnam.jpg",
-                         "title":  "File:Cơm Tấm, Da Nang, Vietnam.jpg"
-                     },
-    "bun-bo-hue":  {
-                       "file":  "/dishes/bun-bo-hue.jpg",
-                       "license":  "CC BY-SA 4.0",
-                       "artist":  "Minh28397",
-                       "source":  "https://commons.wikimedia.org/wiki/File:B%C3%BAn_b%C3%B2_Hu%E1%BA%BF_minh28397.jpg",
-                       "title":  "File:Bún bò Huế minh28397.jpg"
-                   },
-    "banh-canh-cua":  {
-                          "file":  "/dishes/banh-canh-cua.jpg",
-                          "license":  "CC0",
-                          "artist":  "Phương Huy",
-                          "source":  "https://commons.wikimedia.org/wiki/File:T%C3%B4_b%C3%A1nh_canh_cua_%E1%BB%9F_Q1_ng6th1n2022_(b%C3%A1nh_canh_b%E1%BB%99t_g%E1%BA%A1o_n%C4%83ng)_(2).jpg",
-                          "title":  "File:Tô bánh canh cua ở Q1 ng6th1n2022 (bánh canh bột gạo năng) (2).jpg"
-                      },
-    "bun-rieu-cua":  {
-                         "file":  "/dishes/bun-rieu-cua.jpg",
-                         "license":  "CC BY-SA 4.0",
-                         "artist":  "TarnishedPath",
-                         "source":  "https://commons.wikimedia.org/wiki/File:B%C3%BAn_ri%C3%AAu_%C4%91%E1%BA%B7c_bi%E1%BB%87t.jpg",
-                         "title":  "File:Bún riêu đặc biệt.jpg"
-                     },
-    "chao-ga":  {
-                    "file":  "/dishes/chao-ga.jpg",
-                    "license":  "CC BY-SA 4.0",
-                    "artist":  "Phương Huy",
-                    "source":  "https://commons.wikimedia.org/wiki/File:Ch%C3%A1o_g%C3%A0_nh%C3%A0_l%C3%A0m,_th%C3%A1ng_5_n%C4%83m_2020_(1).jpg",
-                    "title":  "File:Cháo gà nhà làm, tháng 5 năm 2020 (1).jpg"
-                },
-    "canh-chua-ca":  {
-                         "file":  "/dishes/canh-chua-ca.jpg",
-                         "license":  "Public domain",
-                         "artist":  "Phương Huy (thảo luận)",
-                         "source":  "https://commons.wikimedia.org/wiki/File:Canh_chua_%C4%90%C3%B4ng_H%C3%A0.jpg",
-                         "title":  "File:Canh chua Đông Hà.jpg"
-                     },
-    "xoi-xeo":  {
-                    "file":  "/dishes/xoi-xeo.jpg",
-                    "license":  "CC BY-SA 4.0",
-                    "artist":  "Viethavvh",
-                    "source":  "https://commons.wikimedia.org/wiki/File:X%C3%B4i_x%C3%A9o.jpg",
-                    "title":  "File:Xôi xéo.jpg"
-                },
-    "com-ga-hoi-an":  {
-                          "file":  "/dishes/com-ga-hoi-an.jpg",
-                          "license":  "CC BY-SA 3.0",
-                          "artist":  "Đông Sơn (thảo luận)",
-                          "source":  "https://commons.wikimedia.org/wiki/File:C%C6%A1m_g%C3%A0_Tam_K%E1%BB%B3,_Qu%E1%BA%A3ng_Nam.JPG",
-                          "title":  "File:Cơm gà Tam Kỳ, Quảng Nam.JPG"
-                      },
-    "com-chien-duong-chau":  {
-                                 "file":  "/dishes/com-chien-duong-chau.jpg",
-                                 "license":  "CC BY-SA 4.0",
-                                 "artist":  "Phương Huy",
-                                 "source":  "https://commons.wikimedia.org/wiki/File:C%C6%A1m_chi%C3%AAn_D%C6%B0%C6%A1ng_Ch%C3%A2u_%E1%BB%9F_%C4%90%C3%B4ng_H%C3%A0_n%C4%83m_2017.jpg",
-                                 "title":  "File:Cơm chiên Dương Châu ở Đông Hà năm 2017.jpg"
-                             },
-    "rau-muong-xao-toi":  {
-                              "file":  "/dishes/rau-muong-xao-toi.jpg",
-                              "license":  "Public domain",
-                              "artist":  "Phương Huy (thảo luận)",
-                              "source":  "https://commons.wikimedia.org/wiki/File:Rau_mu%E1%BB%91ng_x%C3%A0o_t%E1%BB%8Fi,_th%C3%A1ng_4_n%C4%83m_2018.jpg",
-                              "title":  "File:Rau muống xào tỏi, tháng 4 năm 2018.jpg"
-                          },
-    "bo-luc-lac":  {
-                       "file":  "/dishes/bo-luc-lac.jpg",
-                       "license":  "CC0",
-                       "artist":  "Alexandersingh9",
-                       "source":  "https://commons.wikimedia.org/wiki/File:Sachko_lok_lak_-_beef_lok_lak_th%E1%BB%8Bt_b%C3%B2_l%C3%BAc_l%E1%BA%AFc_Khmer_food.jpg",
-                       "title":  "File:Sachko lok lak - beef lok lak thịt bò lúc lắc Khmer food.jpg"
-                   },
-    "ca-tim-nuong-mo-hanh":  {
-                                 "file":  "/dishes/ca-tim-nuong-mo-hanh.jpg",
-                                 "license":  "CC BY-SA 3.0",
-                                 "artist":  "Memberofc1",
-                                 "source":  "https://commons.wikimedia.org/wiki/File:C%C3%A0_t%C3%ADm_n%C6%B0%E1%BB%9Bng.JPG",
-                                 "title":  "File:Cà tím nướng.JPG"
-                             },
-    "che-chuoi":  {
-                      "file":  "/dishes/che-chuoi.jpg",
-                      "license":  "CC BY-SA 4.0",
-                      "artist":  "Phương Huy",
-                      "source":  "https://commons.wikimedia.org/wiki/File:Ch%C3%A8_chu%E1%BB%91i_20201125.jpg",
-                      "title":  "File:Chè chuối 20201125.jpg"
-                  },
-    "che-dau-xanh":  {
-                         "file":  "/dishes/che-dau-xanh.jpg",
-                         "license":  "CC BY-SA 4.0",
-                         "artist":  "Baoothersks",
-                         "source":  "https://commons.wikimedia.org/wiki/File:Ch%C3%A8_%C4%91%E1%BA%ADu_xanh_nha_%C4%91am.jpg",
-                         "title":  "File:Chè đậu xanh nha đam.jpg"
-                     },
-    "chuoi-chien":  {
-                        "file":  "/dishes/chuoi-chien.jpg",
-                        "license":  "CC BY-SA 3.0",
-                        "artist":  "Memberofc1",
-                        "source":  "https://commons.wikimedia.org/wiki/File:Chu%E1%BB%91i_chi%C3%AAn.JPG",
-                        "title":  "File:Chuối chiên.JPG"
-                    },
-    "banh-trang-cuon-thit-heo":  {
-                                     "file":  "/dishes/banh-trang-cuon-thit-heo.jpg",
-                                     "license":  "CC BY-SA 4.0",
-                                     "artist":  "Lê Huỳnh Bộ",
-                                     "source":  "https://commons.wikimedia.org/wiki/File:B%C3%A1nh_tr%C3%A1ng_cu%E1%BB%91n_th%E1%BB%8Bt_heo_(18521).jpg",
-                                     "title":  "File:Bánh tráng cuốn thịt heo (18521).jpg"
-                                 },
-    "lau-thai-hai-san":  {
-                             "file":  "/dishes/lau-thai-hai-san.jpg",
-                             "license":  "Public domain",
-                             "artist":  "Phương Huy (thảo luận)",
-                             "source":  "https://commons.wikimedia.org/wiki/File:L%E1%BA%A9u_h%E1%BA%A3i_s%E1%BA%A3n_t%E1%BA%A1i_Aellmall_n%C4%83m_2016_(4).jpg",
-                             "title":  "File:Lẩu hải sản tại Aellmall năm 2016 (4).jpg"
-                         },
-    "ga-chien-nuoc-mam":  {
-                              "file":  "/dishes/ga-chien-nuoc-mam.jpg",
-                              "license":  "Public domain",
-                              "artist":  "Phương Huy (thảo luận)",
-                              "source":  "https://commons.wikimedia.org/wiki/File:C%C3%A1nh_g%C3%A0_chi%C3%AAn_n%C6%B0%E1%BB%9Bc_m%E1%BA%AFm,_th%C3%A1ng_8_n%C4%83m_2018_(1).JPG",
-                              "title":  "File:Cánh gà chiên nước mắm, tháng 8 năm 2018 (1).JPG"
-                          },
-    "tom-rim-thit":  {
-                         "file":  "/dishes/tom-rim-thit.jpg",
-                         "license":  "Public domain",
-                         "artist":  "Phương Huy (thảo luận)",
-                         "source":  "https://commons.wikimedia.org/wiki/File:N%E1%BA%A5u_t%C3%B4m_rim_(%C4%91%E1%BA%A3o_t%C3%B4m_cho_ch%C3%ADn)._T4_n%C4%83m_2018_(3).jpg",
-                         "title":  "File:Nấu tôm rim (đảo tôm cho chín). T4 năm 2018 (3).jpg"
-                     },
-    "dau-hu-sot-ca":  {
-                          "file":  "/dishes/dau-hu-sot-ca.jpg",
-                          "license":  "CC BY 2.0",
-                          "artist":  "HungryHuy",
-                          "source":  "https://commons.wikimedia.org/wiki/File:Dau_sot_ca,_tofu_stuffed_with_pork,_in_tomato_sauce.jpg",
-                          "title":  "File:Dau sot ca, tofu stuffed with pork, in tomato sauce.jpg"
-                      },
-    "trai-cay-theo-mua":  {
-                              "file":  "/dishes/trai-cay-theo-mua.jpg",
-                              "license":  "CC BY-SA 3.0",
-                              "artist":  "Phoenixcatering",
-                              "source":  "https://commons.wikimedia.org/wiki/File:Tropical_Fruit_Platter.JPG",
-                              "title":  "File:Tropical Fruit Platter.JPG"
-                          },
-    "suon-xao-chua-ngot":  {
-                               "file":  "/dishes/suon-xao-chua-ngot.jpg",
-                               "license":  "CC BY-SA 4.0",
-                               "artist":  "Blemo25",
-                               "source":  "https://commons.wikimedia.org/wiki/File:Suon_xao_chua_ngot_bac_ninh.jpg",
-                               "title":  "File:Suon xao chua ngot bac ninh.jpg"
-                           },
-    "thit-rang-chay-canh":  {
-                                "file":  "/dishes/thit-rang-chay-canh.jpg",
-                                "license":  "CC BY-SA 3.0",
-                                "artist":  "Buileducanh (thảo luận)",
-                                "source":  "https://commons.wikimedia.org/wiki/File:Thit_rang_chay_canh.jpg",
-                                "title":  "File:Thit rang chay canh.jpg"
-                            },
-    "muc-xao-dua-can":  {
-                            "file":  "/dishes/muc-xao-dua-can.jpg",
-                            "license":  "Public domain",
-                            "artist":  "Phương Huy (thảo luận)",
-                            "source":  "https://commons.wikimedia.org/wiki/File:M%C3%B3n_m%E1%BB%B1c_x%C3%A0o,_th%C3%A1ng_4_n%C4%83m_2018_(1).jpg",
-                            "title":  "File:Món mực xào, tháng 4 năm 2018 (1).jpg"
-                        },
-    "dau-cove-xao-thit":  {
-                              "file":  "/dishes/dau-cove-xao-thit.jpg",
-                              "license":  "CC BY-SA 4.0",
-                              "artist":  "Phương Huy",
-                              "source":  "https://commons.wikimedia.org/wiki/File:M%C3%B3n_%C4%83n_c%C3%BAng_m%E1%BB%93ng_2_T%E1%BA%BFt_2022_(%C4%91%E1%BA%ADu_c%C3%B4_ve_x%C3%A0o_c%C3%A0_r%E1%BB%91t)_(1).jpg",
-                              "title":  "File:Món ăn cúng mồng 2 Tết 2022 (đậu cô ve xào cà rốt) (1).jpg"
-                          },
-    "nam-dui-ga-xao":  {
-                           "file":  "/dishes/nam-dui-ga-xao.jpg",
-                           "license":  "CC BY-SA 4.0",
-                           "artist":  "Phương Huy",
-                           "source":  "https://commons.wikimedia.org/wiki/File:M%C3%B3n_%C4%83n_c%C3%BAng_%C4%91%C6%B0a,_T%E1%BA%BFt_2022_(m%C3%B3n_n%E1%BA%A5m_x%C3%A0o_chay)_(1).jpg",
-                           "title":  "File:Món ăn cúng đưa, Tết 2022 (món nấm xào chay) (1).jpg"
-                       },
-    "canh-khoai-mo":  {
-                          "file":  "/dishes/canh-khoai-mo.jpg",
-                          "license":  "CC BY-SA 4.0",
-                          "artist":  "OlBoes",
-                          "source":  "https://commons.wikimedia.org/wiki/File:Canh_Khoai_M%E1%BB%A1.jpg",
-                          "title":  "File:Canh Khoai Mỡ.jpg"
-                      },
-    "canh-mang-suon":  {
-                           "file":  "/dishes/canh-mang-suon.jpg",
-                           "license":  "Public domain",
-                           "artist":  "Phương Huy at Vietnamese Wikipedia",
-                           "source":  "https://commons.wikimedia.org/wiki/File:Canh_m%C4%83ng_h%E1%BA%A7m_th%E1%BB%8Bt_heo.jpg",
-                           "title":  "File:Canh măng hầm thịt heo.jpg"
-                       },
-    "rau-cau-dua":  {
-                        "file":  "/dishes/rau-cau-dua.jpg",
-                        "license":  "Public domain",
-                        "artist":  "Phương Huy (thảo luận)",
-                        "source":  "https://commons.wikimedia.org/wiki/File:Rau_c%C3%A2u_d%E1%BB%ABa_t%C6%B0%C6%A1i_%E1%BB%9F_BiC_Ph%C3%BA_Th%E1%BA%A1nh_th%C3%A1ng_10_n%C4%83m_2018_(1).jpg",
-                        "title":  "File:Rau câu dừa tươi ở BiC Phú Thạnh tháng 10 năm 2018 (1).jpg"
-                    }
+{
+  "pho-bo": {
+    "file": "/dishes/pho-bo.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Kritzolina",
+    "source": "https://commons.wikimedia.org/wiki/File:Ph%E1%BB%9F_b%C3%B2_in_a_German_restaurant_02.jpg",
+    "title": "File:Phở bò in a German restaurant 02.jpg"
+  },
+  "bun-cha": {
+    "file": "/dishes/bun-cha.jpg",
+    "license": "CC BY-SA 2.0",
+    "artist": "Larry",
+    "source": "https://commons.wikimedia.org/wiki/File:B%C3%BAn_ch%E1%BA%A3_H%C3%A0ng_M%C3%A0nh.jpg",
+    "title": "File:Bún chả Hàng Mành.jpg"
+  },
+  "thit-kho-tau": {
+    "file": "/dishes/thit-kho-tau.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Viethavvh",
+    "source": "https://commons.wikimedia.org/wiki/File:Th%E1%BB%8Bt_kho_T%C3%A0u.jpg",
+    "title": "File:Thịt kho Tàu.jpg"
+  },
+  "ca-kho-to": {
+    "file": "/dishes/ca-kho-to.jpg",
+    "license": "CC BY-SA 2.0",
+    "artist": "Charles Haynes",
+    "source": "https://commons.wikimedia.org/wiki/File:C%C3%A1_kho_t%E1%BB%99,_c%C3%A1_h%C3%BA.jpg",
+    "title": "File:Cá kho tộ, cá hú.jpg"
+  },
+  "goi-cuon-tom-thit": {
+    "file": "/dishes/goi-cuon-tom-thit.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "N509FZ",
+    "source": "https://commons.wikimedia.org/wiki/File:G%E1%BB%8Fi_cu%E1%BB%91n_at_a_Vietnamese-style_restaurant_in_Beijing_(20180103175625).jpg",
+    "title": "File:Gỏi cuốn at a Vietnamese-style restaurant in Beijing (20180103175625).jpg"
+  },
+  "nem-ran": {
+    "file": "/dishes/nem-ran.jpg",
+    "license": "CC BY 2.0",
+    "artist": "amrufm",
+    "source": "https://commons.wikimedia.org/wiki/File:Cha_gio.jpg",
+    "title": "File:Cha gio.jpg"
+  },
+  "com-tam-suon": {
+    "file": "/dishes/com-tam-suon.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Christopher Crouzet",
+    "source": "https://commons.wikimedia.org/wiki/File:C%C6%A1m_T%E1%BA%A5m,_Da_Nang,_Vietnam.jpg",
+    "title": "File:Cơm Tấm, Da Nang, Vietnam.jpg"
+  },
+  "bun-bo-hue": {
+    "file": "/dishes/bun-bo-hue.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Minh28397",
+    "source": "https://commons.wikimedia.org/wiki/File:B%C3%BAn_b%C3%B2_Hu%E1%BA%BF_minh28397.jpg",
+    "title": "File:Bún bò Huế minh28397.jpg"
+  },
+  "banh-canh-cua": {
+    "file": "/dishes/banh-canh-cua.jpg",
+    "license": "CC0",
+    "artist": "Phương Huy",
+    "source": "https://commons.wikimedia.org/wiki/File:T%C3%B4_b%C3%A1nh_canh_cua_%E1%BB%9F_Q1_ng6th1n2022_(b%C3%A1nh_canh_b%E1%BB%99t_g%E1%BA%A1o_n%C4%83ng)_(2).jpg",
+    "title": "File:Tô bánh canh cua ở Q1 ng6th1n2022 (bánh canh bột gạo năng) (2).jpg"
+  },
+  "bun-rieu-cua": {
+    "file": "/dishes/bun-rieu-cua.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "TarnishedPath",
+    "source": "https://commons.wikimedia.org/wiki/File:B%C3%BAn_ri%C3%AAu_%C4%91%E1%BA%B7c_bi%E1%BB%87t.jpg",
+    "title": "File:Bún riêu đặc biệt.jpg"
+  },
+  "chao-ga": {
+    "file": "/dishes/chao-ga.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Phương Huy",
+    "source": "https://commons.wikimedia.org/wiki/File:Ch%C3%A1o_g%C3%A0_nh%C3%A0_l%C3%A0m,_th%C3%A1ng_5_n%C4%83m_2020_(1).jpg",
+    "title": "File:Cháo gà nhà làm, tháng 5 năm 2020 (1).jpg"
+  },
+  "canh-chua-ca": {
+    "file": "/dishes/canh-chua-ca.jpg",
+    "license": "Public domain",
+    "artist": "Phương Huy (thảo luận)",
+    "source": "https://commons.wikimedia.org/wiki/File:Canh_chua_%C4%90%C3%B4ng_H%C3%A0.jpg",
+    "title": "File:Canh chua Đông Hà.jpg"
+  },
+  "xoi-xeo": {
+    "file": "/dishes/xoi-xeo.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Viethavvh",
+    "source": "https://commons.wikimedia.org/wiki/File:X%C3%B4i_x%C3%A9o.jpg",
+    "title": "File:Xôi xéo.jpg"
+  },
+  "com-ga-hoi-an": {
+    "file": "/dishes/com-ga-hoi-an.jpg",
+    "license": "CC BY-SA 3.0",
+    "artist": "Đông Sơn (thảo luận)",
+    "source": "https://commons.wikimedia.org/wiki/File:C%C6%A1m_g%C3%A0_Tam_K%E1%BB%B3,_Qu%E1%BA%A3ng_Nam.JPG",
+    "title": "File:Cơm gà Tam Kỳ, Quảng Nam.JPG"
+  },
+  "com-chien-duong-chau": {
+    "file": "/dishes/com-chien-duong-chau.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Phương Huy",
+    "source": "https://commons.wikimedia.org/wiki/File:C%C6%A1m_chi%C3%AAn_D%C6%B0%C6%A1ng_Ch%C3%A2u_%E1%BB%9F_%C4%90%C3%B4ng_H%C3%A0_n%C4%83m_2017.jpg",
+    "title": "File:Cơm chiên Dương Châu ở Đông Hà năm 2017.jpg"
+  },
+  "rau-muong-xao-toi": {
+    "file": "/dishes/rau-muong-xao-toi.jpg",
+    "license": "Public domain",
+    "artist": "Phương Huy (thảo luận)",
+    "source": "https://commons.wikimedia.org/wiki/File:Rau_mu%E1%BB%91ng_x%C3%A0o_t%E1%BB%8Fi,_th%C3%A1ng_4_n%C4%83m_2018.jpg",
+    "title": "File:Rau muống xào tỏi, tháng 4 năm 2018.jpg"
+  },
+  "bo-luc-lac": {
+    "file": "/dishes/bo-luc-lac.jpg",
+    "license": "CC0",
+    "artist": "Alexandersingh9",
+    "source": "https://commons.wikimedia.org/wiki/File:Sachko_lok_lak_-_beef_lok_lak_th%E1%BB%8Bt_b%C3%B2_l%C3%BAc_l%E1%BA%AFc_Khmer_food.jpg",
+    "title": "File:Sachko lok lak - beef lok lak thịt bò lúc lắc Khmer food.jpg"
+  },
+  "ca-tim-nuong-mo-hanh": {
+    "file": "/dishes/ca-tim-nuong-mo-hanh.jpg",
+    "license": "CC BY-SA 3.0",
+    "artist": "Memberofc1",
+    "source": "https://commons.wikimedia.org/wiki/File:C%C3%A0_t%C3%ADm_n%C6%B0%E1%BB%9Bng.JPG",
+    "title": "File:Cà tím nướng.JPG"
+  },
+  "che-chuoi": {
+    "file": "/dishes/che-chuoi.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Phương Huy",
+    "source": "https://commons.wikimedia.org/wiki/File:Ch%C3%A8_chu%E1%BB%91i_20201125.jpg",
+    "title": "File:Chè chuối 20201125.jpg"
+  },
+  "che-dau-xanh": {
+    "file": "/dishes/che-dau-xanh.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Baoothersks",
+    "source": "https://commons.wikimedia.org/wiki/File:Ch%C3%A8_%C4%91%E1%BA%ADu_xanh_nha_%C4%91am.jpg",
+    "title": "File:Chè đậu xanh nha đam.jpg"
+  },
+  "chuoi-chien": {
+    "file": "/dishes/chuoi-chien.jpg",
+    "license": "CC BY-SA 3.0",
+    "artist": "Memberofc1",
+    "source": "https://commons.wikimedia.org/wiki/File:Chu%E1%BB%91i_chi%C3%AAn.JPG",
+    "title": "File:Chuối chiên.JPG"
+  },
+  "banh-trang-cuon-thit-heo": {
+    "file": "/dishes/banh-trang-cuon-thit-heo.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Lê Huỳnh Bộ",
+    "source": "https://commons.wikimedia.org/wiki/File:B%C3%A1nh_tr%C3%A1ng_cu%E1%BB%91n_th%E1%BB%8Bt_heo_(18521).jpg",
+    "title": "File:Bánh tráng cuốn thịt heo (18521).jpg"
+  },
+  "lau-thai-hai-san": {
+    "file": "/dishes/lau-thai-hai-san.jpg",
+    "license": "Public domain",
+    "artist": "Phương Huy (thảo luận)",
+    "source": "https://commons.wikimedia.org/wiki/File:L%E1%BA%A9u_h%E1%BA%A3i_s%E1%BA%A3n_t%E1%BA%A1i_Aellmall_n%C4%83m_2016_(4).jpg",
+    "title": "File:Lẩu hải sản tại Aellmall năm 2016 (4).jpg"
+  },
+  "ga-chien-nuoc-mam": {
+    "file": "/dishes/ga-chien-nuoc-mam.jpg",
+    "license": "Public domain",
+    "artist": "Phương Huy (thảo luận)",
+    "source": "https://commons.wikimedia.org/wiki/File:C%C3%A1nh_g%C3%A0_chi%C3%AAn_n%C6%B0%E1%BB%9Bc_m%E1%BA%AFm,_th%C3%A1ng_8_n%C4%83m_2018_(1).JPG",
+    "title": "File:Cánh gà chiên nước mắm, tháng 8 năm 2018 (1).JPG"
+  },
+  "tom-rim-thit": {
+    "file": "/dishes/tom-rim-thit.jpg",
+    "license": "Public domain",
+    "artist": "Phương Huy (thảo luận)",
+    "source": "https://commons.wikimedia.org/wiki/File:N%E1%BA%A5u_t%C3%B4m_rim_(%C4%91%E1%BA%A3o_t%C3%B4m_cho_ch%C3%ADn)._T4_n%C4%83m_2018_(3).jpg",
+    "title": "File:Nấu tôm rim (đảo tôm cho chín). T4 năm 2018 (3).jpg"
+  },
+  "dau-hu-sot-ca": {
+    "file": "/dishes/dau-hu-sot-ca.jpg",
+    "license": "CC BY 2.0",
+    "artist": "HungryHuy",
+    "source": "https://commons.wikimedia.org/wiki/File:Dau_sot_ca,_tofu_stuffed_with_pork,_in_tomato_sauce.jpg",
+    "title": "File:Dau sot ca, tofu stuffed with pork, in tomato sauce.jpg"
+  },
+  "trai-cay-theo-mua": {
+    "file": "/dishes/trai-cay-theo-mua.jpg",
+    "license": "CC BY-SA 3.0",
+    "artist": "Phoenixcatering",
+    "source": "https://commons.wikimedia.org/wiki/File:Tropical_Fruit_Platter.JPG",
+    "title": "File:Tropical Fruit Platter.JPG"
+  },
+  "suon-xao-chua-ngot": {
+    "file": "/dishes/suon-xao-chua-ngot.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Blemo25",
+    "source": "https://commons.wikimedia.org/wiki/File:Suon_xao_chua_ngot_bac_ninh.jpg",
+    "title": "File:Suon xao chua ngot bac ninh.jpg"
+  },
+  "thit-rang-chay-canh": {
+    "file": "/dishes/thit-rang-chay-canh.jpg",
+    "license": "CC BY-SA 3.0",
+    "artist": "Buileducanh (thảo luận)",
+    "source": "https://commons.wikimedia.org/wiki/File:Thit_rang_chay_canh.jpg",
+    "title": "File:Thit rang chay canh.jpg"
+  },
+  "muc-xao-dua-can": {
+    "file": "/dishes/muc-xao-dua-can.jpg",
+    "license": "Public domain",
+    "artist": "Phương Huy (thảo luận)",
+    "source": "https://commons.wikimedia.org/wiki/File:M%C3%B3n_m%E1%BB%B1c_x%C3%A0o,_th%C3%A1ng_4_n%C4%83m_2018_(1).jpg",
+    "title": "File:Món mực xào, tháng 4 năm 2018 (1).jpg"
+  },
+  "dau-cove-xao-thit": {
+    "file": "/dishes/dau-cove-xao-thit.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Phương Huy",
+    "source": "https://commons.wikimedia.org/wiki/File:M%C3%B3n_%C4%83n_c%C3%BAng_m%E1%BB%93ng_2_T%E1%BA%BFt_2022_(%C4%91%E1%BA%ADu_c%C3%B4_ve_x%C3%A0o_c%C3%A0_r%E1%BB%91t)_(1).jpg",
+    "title": "File:Món ăn cúng mồng 2 Tết 2022 (đậu cô ve xào cà rốt) (1).jpg"
+  },
+  "nam-dui-ga-xao": {
+    "file": "/dishes/nam-dui-ga-xao.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Phương Huy",
+    "source": "https://commons.wikimedia.org/wiki/File:M%C3%B3n_%C4%83n_c%C3%BAng_%C4%91%C6%B0a,_T%E1%BA%BFt_2022_(m%C3%B3n_n%E1%BA%A5m_x%C3%A0o_chay)_(1).jpg",
+    "title": "File:Món ăn cúng đưa, Tết 2022 (món nấm xào chay) (1).jpg"
+  },
+  "canh-khoai-mo": {
+    "file": "/dishes/canh-khoai-mo.jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "OlBoes",
+    "source": "https://commons.wikimedia.org/wiki/File:Canh_Khoai_M%E1%BB%A1.jpg",
+    "title": "File:Canh Khoai Mỡ.jpg"
+  },
+  "canh-mang-suon": {
+    "file": "/dishes/canh-mang-suon.jpg",
+    "license": "Public domain",
+    "artist": "Phương Huy at Vietnamese Wikipedia",
+    "source": "https://commons.wikimedia.org/wiki/File:Canh_m%C4%83ng_h%E1%BA%A7m_th%E1%BB%8Bt_heo.jpg",
+    "title": "File:Canh măng hầm thịt heo.jpg"
+  },
+  "rau-cau-dua": {
+    "file": "/dishes/rau-cau-dua.jpg",
+    "license": "Public domain",
+    "artist": "Phương Huy (thảo luận)",
+    "source": "https://commons.wikimedia.org/wiki/File:Rau_c%C3%A2u_d%E1%BB%ABa_t%C6%B0%C6%A1i_%E1%BB%9F_BiC_Ph%C3%BA_Th%E1%BA%A1nh_th%C3%A1ng_10_n%C4%83m_2018_(1).jpg",
+    "title": "File:Rau câu dừa tươi ở BiC Phú Thạnh tháng 10 năm 2018 (1).jpg"
+  }
 }
