@@ -158,3 +158,45 @@ export function resolveDishVisual(name: string, dishRole: string): DishVisual {
 
   return fallback(dishRole);
 }
+
+// Thứ tự ưu tiên khi chọn món làm ảnh bìa của mâm.
+const HERO_PRIORITY = [
+  "MON_MAN",
+  "LAU",
+  "COM_BUN_PHO",
+  "MON_XAO",
+  "CANH_SUP",
+  "MON_CUON",
+  "RAU_LUOC",
+  "DO_CHUA",
+  "TRANG_MIENG",
+];
+
+/** Vai trò không được làm ảnh bìa chỉ vì tình cờ có ảnh — chè làm bìa bữa tối
+ *  là sai, thà để gradient của món mặn. */
+const NEVER_HERO = new Set(["TRANG_MIENG", "DO_CHUA"]);
+
+function heroRank(dishRole: string): number {
+  const i = HERO_PRIORITY.indexOf(dishRole);
+  return i === -1 ? HERO_PRIORITY.length : i;
+}
+
+export type HeroCandidate = { id: string; name: string; dishRole: string };
+
+/**
+ * Chọn món làm ảnh bìa: món có ảnh thật đứng đầu theo ưu tiên vai trò. Nếu chỉ
+ * các món thuộc nhóm đáy có ảnh thì bỏ qua ảnh, lấy món đầu theo ưu tiên.
+ */
+export function pickHeroDish<T extends HeroCandidate>(dishes: T[]): T | null {
+  if (dishes.length === 0) return null;
+
+  const sorted = [...dishes].sort(
+    (a, b) => heroRank(a.dishRole) - heroRank(b.dishRole),
+  );
+  const withImage = sorted.find(
+    (x) =>
+      !NEVER_HERO.has(x.dishRole) &&
+      resolveDishVisual(x.name, x.dishRole).imageUrl !== null,
+  );
+  return withImage ?? sorted[0];
+}

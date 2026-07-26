@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveDishVisual, ROLE_VISUAL } from "./dish-image";
+import { resolveDishVisual, pickHeroDish, ROLE_VISUAL } from "./dish-image";
 
 describe("fallback khi không khớp món nào", () => {
   it("món lạ hoàn toàn trả emoji + gradient theo vai trò, slug null", () => {
@@ -126,6 +126,47 @@ describe("khớp chứa có canh gác", () => {
   it("tên rỗng hoặc chỉ ký tự lạ trả fallback, không nổ", () => {
     expect(resolveDishVisual("", "MON_MAN").slug).toBeNull();
     expect(resolveDishVisual("!!!", "MON_MAN").slug).toBeNull();
+  });
+});
+
+describe("pickHeroDish", () => {
+  const d = (id: string, name: string, dishRole: string) => ({
+    id,
+    name,
+    dishRole,
+  });
+
+  it("chọn theo thứ tự ưu tiên vai trò khi không món nào có ảnh", () => {
+    const dishes = [
+      d("1", "Món canh lạ", "CANH_SUP"),
+      d("2", "Món mặn lạ", "MON_MAN"),
+      d("3", "Món rau lạ", "RAU_LUOC"),
+    ];
+    expect(pickHeroDish(dishes)?.id).toBe("2");
+  });
+
+  it("ưu tiên món CÓ ảnh thật hơn món cùng nhóm không ảnh", () => {
+    const dishes = [
+      d("1", "Món mặn AI bịa", "MON_MAN"),
+      d("2", "Canh chua cá", "CANH_SUP"),
+    ];
+    expect(pickHeroDish(dishes)?.id).toBe("2");
+  });
+
+  it("không để tráng miệng/đồ chua làm hero dù có ảnh", () => {
+    const dishes = [
+      d("1", "Món mặn AI bịa", "MON_MAN"),
+      d("2", "Chè chuối", "TRANG_MIENG"),
+    ];
+    expect(pickHeroDish(dishes)?.id).toBe("1");
+  });
+
+  it("mâm một món trả chính món đó", () => {
+    expect(pickHeroDish([d("1", "Món lạ", "RAU_LUOC")])?.id).toBe("1");
+  });
+
+  it("mâm rỗng trả null", () => {
+    expect(pickHeroDish([])).toBeNull();
   });
 });
 
