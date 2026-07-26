@@ -93,6 +93,42 @@ describe("biến thể ngoặc đơn", () => {
   });
 });
 
+describe("khớp chứa có canh gác", () => {
+  it("tên AI dài chứa trọn tên catalog, đúng vai trò -> trúng", () => {
+    const v = resolveDishVisual("Thịt kho tàu kiểu miền Nam", "MON_MAN");
+    expect(v.slug).toBe("thit-kho-tau");
+    expect(v.imageUrl).toBe("/dishes/thit-kho-tau.jpg");
+  });
+
+  it("chứa nhưng SAI vai trò -> trượt", () => {
+    // Cùng chuỗi trên, chỉ đổi vai trò. Vai trò là chốt chặn chính chống gán
+    // nhầm ảnh cho món chỉ trùng chữ.
+    const v = resolveDishVisual("Thịt kho tàu kiểu miền Nam", "TRANG_MIENG");
+    expect(v.slug).toBeNull();
+    expect(v.imageUrl).toBeNull();
+  });
+
+  it("khoá ngắn dưới ngưỡng không được dùng để khớp chứa", () => {
+    // "Cá" quá ngắn, nếu lọt sẽ nuốt mọi món có chữ cá.
+    expect(resolveDishVisual("Cá", "MON_MAN").slug).toBeNull();
+  });
+
+  it("không khớp giữa từ", () => {
+    // Chuỗi con "com ga" nằm trong "comgaxx" nhưng không phải ranh giới từ.
+    expect(resolveDishVisual("Bánh comgaxx nướng", "COM_BUN_PHO").slug).toBeNull();
+  });
+
+  it("khoá dài được ưu tiên hơn khoá ngắn", () => {
+    const v = resolveDishVisual("Món canh chua cá đặc biệt", "CANH_SUP");
+    expect(v.slug).toBe("canh-chua-ca");
+  });
+
+  it("tên rỗng hoặc chỉ ký tự lạ trả fallback, không nổ", () => {
+    expect(resolveDishVisual("", "MON_MAN").slug).toBeNull();
+    expect(resolveDishVisual("!!!", "MON_MAN").slug).toBeNull();
+  });
+});
+
 describe("bất biến toàn catalog", () => {
   it("mọi món có ảnh đều có ghi công", async () => {
     const { allDishes } = await import("@/data/catalog");

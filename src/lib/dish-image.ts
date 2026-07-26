@@ -102,6 +102,19 @@ for (const dish of allDishes) {
   }
 }
 
+/** Khoá ngắn hơn ngưỡng này không được dùng cho khớp chứa. Tên món ngắn nhất
+ *  trong catalog là "pho bo"/"com ga" (6 ký tự) — đặt cao hơn là mất hẳn khả
+ *  năng khớp "Phở bò tái nạm". */
+const MIN_CONTAIN_LEN = 6;
+
+// Khoá đủ dài để dùng cho khớp chứa, dài trước để "canh chua ca" thắng "canh chua".
+const containKeys: { key: string; dish: CatalogDishData }[] = [
+  ...[...byName.entries()].map(([key, dish]) => ({ key, dish })),
+  ...[...byAlias.entries()].map(([key, dish]) => ({ key, dish })),
+]
+  .filter((e) => e.key.length >= MIN_CONTAIN_LEN)
+  .sort((a, b) => b.key.length - a.key.length);
+
 function fallback(dishRole: string): DishVisual {
   const rv = ROLE_VISUAL[dishRole] ?? NEUTRAL_VISUAL;
   return {
@@ -133,6 +146,15 @@ export function resolveDishVisual(name: string, dishRole: string): DishVisual {
 
   const exact = byName.get(n) ?? byAlias.get(n);
   if (exact) return hit(exact, dishRole);
+
+  // Tầng 3: tên AI chứa trọn tên catalog. Hai chốt chặn bắt buộc — đệm khoảng
+  // trắng hai đầu để chỉ khớp theo biên từ, và phải trùng vai trò. Thiếu chúng
+  // thì "cá" sẽ gán ảnh cá kho tộ cho mọi món có chữ cá.
+  const padded = ` ${n} `;
+  for (const { key, dish } of containKeys) {
+    if (dish.dishRole !== dishRole) continue;
+    if (padded.includes(` ${key} `)) return hit(dish, dishRole);
+  }
 
   return fallback(dishRole);
 }
