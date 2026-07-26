@@ -4,17 +4,13 @@ import { revalidatePath } from "next/cache";
 import { requireFamily } from "@/lib/tenant";
 import { prisma } from "@/lib/db";
 import { syncShopping } from "@/lib/shopping";
+import { localMidnight } from "@/lib/date";
 
 // Xoá mâm cơm. Tách khỏi actions/edit.ts vì file đó lo việc SỬA bằng AI, còn
 // đây là thao tác thủ công không đụng tới AI.
 //
 // Xoá PlannedMeal là cascade sạch: MealDish và EditJob đều onDelete: Cascade.
 // Recipe thành mồ côi — vốn đã vậy từ Giai đoạn 1, không mở rộng ở đây.
-
-/** Nửa đêm giờ ĐỊA PHƯƠNG, khớp cách PlannedMeal.date được lưu (xem saveMenu). */
-function localMidnight(ymd: string): Date {
-  return new Date(`${ymd}T00:00:00`);
-}
 
 /** Còn job SỬA đang hoạt động cho mâm này không. */
 async function hasActiveEditJob(

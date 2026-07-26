@@ -13,6 +13,7 @@ import {
 import { ackJobAction } from "@/lib/actions/menu";
 import { ackEditJobAction } from "@/lib/actions/edit";
 import { JobPoller } from "./JobPoller";
+import { ymd } from "@/lib/date";
 import { MealCard, type MealView } from "./MealCard";
 import { DeleteDayButton } from "./DeleteDayButton";
 
@@ -21,10 +22,6 @@ const MEAL_RANK: Record<string, number> = {
   LUNCH: 1,
   DINNER: 2,
 };
-
-function dayKey(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
 
 function formatDay(key: string): string {
   const [y, m, d] = key.split("-");
@@ -85,7 +82,7 @@ export default async function DashboardPage({
   // Gom nhóm theo ngày, sắp bữa theo thứ tự sáng/trưa/tối.
   const byDay = new Map<string, typeof meals>();
   for (const meal of meals) {
-    const key = dayKey(meal.date);
+    const key = ymd(meal.date);
     if (!byDay.has(key)) byDay.set(key, []);
     byDay.get(key)!.push(meal);
   }
@@ -151,7 +148,7 @@ export default async function DashboardPage({
               <>
                 Đang xếp hàng — <strong>thứ {queuePos}</strong> trong hàng đợi tạo
                 thực đơn cho ngày{" "}
-                <strong>{formatDay(dayKey(activeJob.date))}</strong>. Sẽ tự chạy
+                <strong>{formatDay(ymd(activeJob.date))}</strong>. Sẽ tự chạy
                 khi tới lượt.
               </>
             ) : progress ? (
@@ -165,7 +162,7 @@ export default async function DashboardPage({
             ) : (
               <>
                 Đang tạo thực đơn cho ngày{" "}
-                <strong>{formatDay(dayKey(activeJob.date))}</strong>… Bạn có thể
+                <strong>{formatDay(ymd(activeJob.date))}</strong>… Bạn có thể
                 rời trang, kết quả sẽ tự hiện ở đây.
               </>
             )}
@@ -178,7 +175,7 @@ export default async function DashboardPage({
       {failedJob && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           <p className="font-medium">
-            Tạo thực đơn cho ngày {formatDay(dayKey(failedJob.date))} thất bại.
+            Tạo thực đơn cho ngày {formatDay(ymd(failedJob.date))} thất bại.
           </p>
           {failedJob.error && (
             <p className="mt-1 text-red-600">{failedJob.error}</p>
