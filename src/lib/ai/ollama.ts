@@ -22,6 +22,7 @@ import {
   type MemberRecognition,
 } from "./schema";
 import { basicAuthHeader, type BasicAuth } from "./openai-client";
+import { aiAbortSignal, aiTimeoutError } from "./timeout";
 
 // Adapter Ollama dùng API NATIVE (/api/chat, /api/tags) thay vì lớp OpenAI (/v1).
 // Lý do: chỉ API native cho set `options.num_ctx` — quan trọng để prompt (hồ sơ
@@ -77,17 +78,29 @@ export class OllamaProvider implements AIProvider {
 
   /** Gọi /api/chat (non-stream), trả về nội dung text của message. */
   private async chat(messages: OllamaChatMessage[]): Promise<string> {
-    const res = await fetch(`${this.base}/api/chat`, {
-      method: "POST",
-      headers: this.headers(),
-      body: JSON.stringify({
-        model: this.model,
-        messages,
-        stream: false,
-        format: "json", // ép JSON hợp lệ
-        options: { num_ctx: this.numCtx, temperature: this.temperature },
-      }),
-    });
+    // Không có timeout thì Ollama treo là job treo vĩnh viễn — fetch không tự
+    // bỏ cuộc. Ngưỡng lấy từ aiTimeoutMs() để luôn thấp hơn ngưỡng job treo.
+    const { signal, clear } = aiAbortSignal();
+    let res: Response;
+    try {
+      res = await fetch(`${this.base}/api/chat`, {
+        method: "POST",
+        headers: this.headers(),
+        signal,
+        body: JSON.stringify({
+          model: this.model,
+          messages,
+          stream: false,
+          format: "json", // ép JSON hợp lệ
+          options: { num_ctx: this.numCtx, temperature: this.temperature },
+        }),
+      });
+    } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") throw aiTimeoutError();
+      throw e;
+    } finally {
+      clear();
+    }
     if (!res.ok) {
       const body = await res.text().catch(() => "");
       throw new Error(

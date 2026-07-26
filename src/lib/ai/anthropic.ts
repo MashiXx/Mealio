@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { aiTimeoutMs } from "./timeout";
 import type {
   AIProvider,
   MenuContext,
@@ -34,6 +35,9 @@ export class AnthropicProvider implements AIProvider {
   private client() {
     return new Anthropic({
       apiKey: this.apiKey,
+      // Timeout lấy chung từ aiTimeoutMs() để luôn thấp hơn ngưỡng job treo —
+      // ngược lại thì reaper giết job trước khi lời gọi kịp hỏng.
+      timeout: aiTimeoutMs(),
       ...(this.baseUrl ? { baseURL: this.baseUrl } : {}),
     });
   }

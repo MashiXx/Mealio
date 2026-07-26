@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { aiTimeoutMs } from "./timeout";
 
 // Basic auth cho endpoint tự host nằm sau reverse proxy (Ollama, OpenAI-compatible…).
 export type BasicAuth = { user: string; pass: string };
@@ -37,6 +38,9 @@ export type OpenAIClientOpts = {
 export function buildOpenAIClient(opts: OpenAIClientOpts): OpenAI {
   return new OpenAI({
     apiKey: opts.apiKey && opts.apiKey.length > 0 ? opts.apiKey : "unused",
+    // Timeout lấy chung từ aiTimeoutMs() để luôn thấp hơn ngưỡng job treo —
+    // ngược lại thì reaper giết job trước khi lời gọi kịp hỏng.
+    timeout: aiTimeoutMs(),
     ...(opts.baseUrl ? { baseURL: opts.baseUrl } : {}),
     ...(opts.basicAuth
       ? { defaultHeaders: { Authorization: basicAuthHeader(opts.basicAuth) } }

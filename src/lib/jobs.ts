@@ -11,6 +11,8 @@ import {
 import { syncShopping } from "./shopping";
 import { verifyWeekPlan, weekPlanRetryNote } from "./week-plan";
 import { expandDay } from "./expand-plan";
+import { staleJobMs } from "./ai/timeout";
+import { aiWeekPlanSchema, type AiWeekPlan } from "./ai/schema";
 import type { MealTypeStr, MenuContext, AIProvider } from "./ai/types";
 import type { GenerationJob, EditJob } from "@prisma/client";
 
@@ -28,7 +30,12 @@ function readConcurrency(): number {
 const CONCURRENCY = readConcurrency();
 
 // RUNNING quá lâu coi như treo (server có thể đã restart giữa chừng) -> FAILED.
-const STALE_MS = 5 * 60 * 1000; // 5 phút
+//
+// SUY RA từ ngưỡng timeout của một lời gọi AI, KHÔNG đặt rời. Bản trước đóng
+// cứng 5 phút trong khi một vòng Ollama trên CPU mất hàng phút — reaper giết
+// sạch job đang chạy đàng hoàng, và đó chính là "timeout" khi sinh nhiều ngày.
+// Buộc hai con số vào nhau thì chúng không thể trôi lệch nữa.
+const STALE_MS = staleJobMs();
 // Job FAILED chỉ hiện trên dashboard trong khoảng này.
 const FAILED_VISIBLE_MS = 60 * 60 * 1000; // 1 giờ
 
@@ -201,13 +208,21 @@ async function runGenerationJob(jobId: string): Promise<void> {
 
     const provider = await getAIProvider(job.familyId);
 
-    if (days === 1) {
-      // ĐƯỜNG CŨ, GIỮ NGUYÊN: một ngày vẫn sinh một lượt kèm công thức, và nhánh
-      // AVAILABLE_ONLY vẫn verify kho như trước. Đây là cách bảo đảm "chọn 1 ngày
-      // -> hành vi y hệt hiện tại" mà không phải tin vào suy luận.
-      await runSingleDay(job, jobId, ctx, mode, provider);
+    // Mỗi nhánh gọi AI ĐÚNG MỘT LẦN (trừ SINGLE có thể retry kho), nhờ vậy không
+    // job nào chạm ngưỡng treo dù đợt dài bao nhiêu ngày.
+    if (job.kind === "PLAN") {
+      await runPlanJob(job, jobId, ctx, dateList, provider);
+      // Job PLAN chỉ dựng khung, chưa có mâm nào -> chưa cần đồng bộ đi chợ.
+      await markDone(jobId);
+      return;
+    }
+
+    if (job.kind === "EXPAND_DAY") {
+      await runExpandDayJob(job, jobId, ctx, provider);
     } else {
-      await runMultiDay(job, jobId, ctx, dateList, days, provider);
+      // SINGLE: ĐƯỜNG CŨ, GIỮ NGUYÊN — sinh một lượt kèm công thức, nhánh
+      // AVAILABLE_ONLY vẫn verify kho như trước.
+      await runSingleDay(job, jobId, ctx, mode, provider);
     }
 
     // Danh sách đi chợ là sản phẩm PHÁI SINH: hỏng nó không có nghĩa là hỏng thực
@@ -216,21 +231,145 @@ async function runGenerationJob(jobId: string): Promise<void> {
     // và người dùng có thể bấm sinh lại một vòng Ollama vô ích. syncShopping
     // idempotent nên lượt đồng bộ kế tiếp (sửa mâm, đổi kho, bấm "Đã nấu") tự chữa.
     //
-    // Gọi MỘT lần sau khi xong cả khoảng, không gọi mỗi ngày: nó quét lại toàn bộ
-    // mâm sắp tới nên bảy lần gọi là bảy lần làm cùng một việc.
+    // Chạy sau MỖI ngày chứ không chỉ ngày cuối: các job-ngày độc lập nhau, ngày
+    // giữa có thể hỏng, nên chờ tới ngày cuối là danh sách đi chợ có thể không
+    // bao giờ được dựng. Nó idempotent nên chạy thừa chỉ tốn một transaction.
     try {
       await syncShopping(job.familyId);
     } catch (err) {
       console.error("[jobs] syncShopping lỗi sau khi đã lưu thực đơn:", err);
     }
 
-    // runMultiDay có thể đã đánh job FAILED giữa chừng; đừng ghi đè thành DONE.
-    await prisma.generationJob.updateMany({
-      where: { id: jobId, status: "RUNNING" },
-      data: { status: "DONE", finishedAt: new Date() },
-    });
+    await markDone(jobId);
   } catch (err) {
     await failJob(jobId, err);
+  }
+}
+
+/** Đánh DONE, nhưng chỉ khi job vẫn còn RUNNING (reaper có thể đã đụng vào). */
+async function markDone(jobId: string): Promise<void> {
+  await prisma.generationJob.updateMany({
+    where: { id: jobId, status: "RUNNING" },
+    data: { status: "DONE", finishedAt: new Date() },
+  });
+}
+
+/**
+ * Job PLAN: dựng khung cho cả đợt, verify, lưu khung, rồi ĐẺ RA các job-ngày.
+ *
+ * Đây là chỗ duy nhất AI nhìn trọn khoảng ngày. Khung được lưu xuống
+ * MealPlan.planJson nên các job-ngày chạy rời nhau vẫn không trùng món và vẫn
+ * xoay vòng đạm — thứ mà "chỉ đưa lịch sử ngày trước" không làm được, vì lịch sử
+ * chỉ nhìn về sau.
+ */
+async function runPlanJob(
+  job: GenerationJob,
+  jobId: string,
+  ctx: MenuContext,
+  dateList: string[],
+  provider: AIProvider,
+): Promise<void> {
+  let plan = await provider.generateWeekPlan(ctx);
+
+  // Model hay phớt lờ luật cứng -> code kiểm lại. Chỉ sinh lại MỘT lần: vi phạm
+  // hai lần thì nhận khung đó còn hơn bắt người dùng chờ thêm một vòng Ollama.
+  const violations = verifyWeekPlan(plan, ctx.slots);
+  if (violations.length > 0) {
+    plan = await provider.generateWeekPlan({
+      ...ctx,
+      retryNote: weekPlanRetryNote(violations),
+    });
+  }
+
+  // MealPlan + toàn bộ job-ngày tạo TRONG MỘT transaction: nửa vời ở đây nghĩa là
+  // có khung mà không ai nở, hoặc job-ngày trỏ vào MealPlan không tồn tại.
+  await prisma.$transaction(async (tx) => {
+    const mealPlan = await tx.mealPlan.create({
+      data: {
+        familyId: job.familyId,
+        startDate: new Date(`${dateList[0]}T00:00:00`),
+        endDate: new Date(`${dateList[dateList.length - 1]}T00:00:00`),
+        planJson: plan,
+      },
+      select: { id: true },
+    });
+
+    await tx.generationJob.update({
+      where: { id: jobId },
+      data: { mealPlanId: mealPlan.id },
+    });
+
+    await tx.generationJob.createMany({
+      data: dateList.map((_, i) => ({
+        familyId: job.familyId,
+        kind: "EXPAND_DAY" as const,
+        parentJobId: jobId,
+        dayOffset: i,
+        mealPlanId: mealPlan.id,
+        // Ngày đích của job này; runGenerationJob dựng slot từ đây.
+        date: new Date(`${dateList[i]}T00:00:00`),
+        days: 1,
+        mealTypes: job.mealTypes,
+        dishCount: job.dishCount,
+        pantryMode: job.pantryMode,
+        status: "PENDING" as const,
+      })),
+    });
+  });
+}
+
+/** Job EXPAND_DAY: nở đúng một ngày từ khung đã lưu, rồi lưu mâm. */
+async function runExpandDayJob(
+  job: GenerationJob,
+  jobId: string,
+  ctx: MenuContext,
+  provider: AIProvider,
+): Promise<void> {
+  if (!job.mealPlanId) {
+    throw new Error("Job nở ngày thiếu MealPlan — không có khung để nở.");
+  }
+  const mealPlan = await prisma.mealPlan.findUnique({
+    where: { id: job.mealPlanId },
+    select: { planJson: true },
+  });
+  const parsed = aiWeekPlanSchema.safeParse(mealPlan?.planJson);
+  if (!parsed.success) {
+    throw new Error(
+      "Khung thực đơn của đợt này không đọc được. Hãy tạo lại thực đơn.",
+    );
+  }
+  const plan: AiWeekPlan = parsed.data;
+
+  const date = ymd(job.date);
+
+  // Khung không có bữa nào cho ngày này thì DỪNG và nói thật. Nếu cứ chạy tiếp,
+  // expandDay trả mảng rỗng, ta bỏ qua saveMenu rồi vẫn tăng doneDays — người
+  // dùng thấy "7/7 ngày" trong khi chỉ có 6 ngày có cơm. Thà báo hỏng một ngày
+  // còn hơn báo xong một thứ chưa xong.
+  if (!plan.meals.some((m) => m.date === date)) {
+    throw new Error(
+      `Khung thực đơn không có bữa nào cho ngày ${date} — AI đã bỏ sót ngày này lúc dựng khung.`,
+    );
+  }
+
+  const meals = await expandDay(plan, date, {
+    provider,
+    baseCtx: ctx,
+    slots: ctx.slots,
+    servings: Math.max(1, ctx.familySize),
+  });
+
+  if (meals.length === 0) {
+    throw new Error(`Không nở được món nào cho ngày ${date}.`);
+  }
+  await saveMenu(job.familyId, { meals }, ctx.slots, job.mealPlanId);
+
+  // Tiến độ nằm trên job PLAN để thẻ dashboard đọc một chỗ.
+  if (job.parentJobId) {
+    await prisma.generationJob.update({
+      where: { id: job.parentJobId },
+      data: { doneDays: { increment: 1 } },
+    });
   }
 }
 
@@ -282,95 +421,6 @@ async function runSingleDay(
   // ctx.slots mang cơ cấu mâm đã yêu cầu cho từng bữa -> mỗi PlannedMeal ghi
   // lại số món đáng lẽ có, để bảng chính biết mâm nào thật sự bị hụt.
   await saveMenu(job.familyId, menu, ctx.slots);
-}
-
-/**
- * Đường nhiều ngày, HAI PHA.
- *
- * Tới đây pantryMode luôn là FLEXIBLE: server action chặn AVAILABLE_ONLY khi
- * days > 1 (nấu cả tuần thuần bằng kho hiện có là vô nghĩa, kho cạn sau một hai
- * ngày). Nên KHÔNG có verifyMenuAgainstPantry ở đây — không phải bỏ sót.
- */
-async function runMultiDay(
-  job: { familyId: string },
-  jobId: string,
-  ctx: MenuContext,
-  dateList: string[],
-  days: number,
-  provider: AIProvider,
-): Promise<void> {
-  // ---------- PHA 1: khung cho cả khoảng ----------
-  let plan = await provider.generateWeekPlan(ctx);
-
-  // Model hay phớt lờ luật cứng -> code kiểm lại. Chỉ sinh lại MỘT lần: vi phạm
-  // hai lần thì nhận khung đó còn hơn bắt người dùng chờ thêm một vòng Ollama
-  // trên CPU. Cùng lập luận với nhánh AVAILABLE_ONLY ở đường một ngày.
-  const violations = verifyWeekPlan(plan, ctx.slots);
-  if (violations.length > 0) {
-    plan = await provider.generateWeekPlan({
-      ...ctx,
-      retryNote: weekPlanRetryNote(violations),
-    });
-  }
-
-  // MealPlan tạo SAU khi khung đã qua verify (lúc đó mới chắc khoảng ngày hợp lệ)
-  // và TRƯỚC lần saveMenu đầu tiên, để mọi PlannedMeal gắn được mealPlanId.
-  const mealPlan = await prisma.mealPlan.create({
-    data: {
-      familyId: job.familyId,
-      startDate: new Date(`${dateList[0]}T00:00:00`),
-      endDate: new Date(`${dateList[dateList.length - 1]}T00:00:00`),
-    },
-    select: { id: true },
-  });
-  await prisma.generationJob.update({
-    where: { id: jobId },
-    data: { mealPlanId: mealPlan.id },
-  });
-
-  // ---------- PHA 2: nở từng ngày, lưu ngay từng ngày ----------
-  const servings = Math.max(1, ctx.familySize);
-  for (const date of dateList) {
-    try {
-      const meals = await expandDay(plan, date, {
-        provider,
-        baseCtx: ctx,
-        slots: ctx.slots,
-        servings,
-      });
-      if (meals.length > 0) {
-        await saveMenu(
-          job.familyId,
-          { meals },
-          ctx.slots.filter((s) => s.date === date),
-          mealPlan.id,
-        );
-      }
-    } catch (err) {
-      // Các ngày trước đã lưu xong và đang hiện trên bảng chính. Nói rõ hỏng từ
-      // ngày nào thay vì nuốt lỗi hoặc xoá sạch phần đã làm được.
-      const done = await prisma.generationJob.findUnique({
-        where: { id: jobId },
-        select: { doneDays: true },
-      });
-      await prisma.generationJob.update({
-        where: { id: jobId },
-        data: {
-          status: "FAILED",
-          error: `Đã tạo xong ${done?.doneDays ?? 0}/${days} ngày. Ngày ${date} lỗi: ${
-            err instanceof Error ? err.message : String(err)
-          }. Các ngày đã tạo vẫn giữ nguyên.`,
-          finishedAt: new Date(),
-        },
-      });
-      return;
-    }
-
-    await prisma.generationJob.update({
-      where: { id: jobId },
-      data: { doneDays: { increment: 1 } },
-    });
-  }
 }
 
 /** Đánh job FAILED kèm lý do. Không ném lỗi ra ngoài. */
@@ -428,8 +478,35 @@ export async function getActiveJob(
   void pumpJobs(); // tự chữa: đảm bảo hàng đợi luôn được kéo
   return prisma.generationJob.findFirst({
     where: { familyId, status: { in: [...ACTIVE_STATUSES] } },
+    // createdAt tăng dần theo thứ tự tạo, mà job-ngày được tạo SAU job PLAN nên
+    // "mới nhất" luôn là job đang thật sự chạy trong đợt.
     orderBy: { createdAt: "desc" },
   });
+}
+
+/** Tiến độ của cả ĐỢT nhiều ngày, đọc từ job PLAN. null = không phải đợt nhiều ngày. */
+export type JobProgress = { days: number; doneDays: number };
+
+/**
+ * Tiến độ hiển thị cho một job đang chạy.
+ *
+ * Đợt nhiều ngày bị tách thành job PLAN + N job-ngày, nên bản thân job đang chạy
+ * (một job-ngày) chỉ biết phần của nó. Con số "3/7" nằm trên job PLAN.
+ */
+export async function getJobProgress(
+  job: GenerationJob,
+): Promise<JobProgress | null> {
+  if (job.kind === "PLAN") {
+    return { days: job.days, doneDays: job.doneDays };
+  }
+  if (job.kind === "EXPAND_DAY" && job.parentJobId) {
+    const parent = await prisma.generationJob.findUnique({
+      where: { id: job.parentJobId },
+      select: { days: true, doneDays: true },
+    });
+    return parent ? { days: parent.days, doneDays: parent.doneDays } : null;
+  }
+  return null;
 }
 
 /**

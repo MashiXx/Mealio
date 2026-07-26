@@ -4,6 +4,7 @@ import { requireFamily } from "@/lib/tenant";
 import { MEAL_TYPE_LABEL, DISH_ROLE_LABEL } from "@/lib/enums";
 import {
   getActiveJob,
+  getJobProgress,
   getRecentFailedJob,
   getQueuePosition,
   getActiveEditJobs,
@@ -44,9 +45,17 @@ export default async function DashboardPage({
   // dọn job treo (ghi DB) nên chạy tuần tự cho tất định.
   const activeJob = await getActiveJob(familyId);
   const failedJob = activeJob ? null : await getRecentFailedJob(familyId);
-  // Vị trí hàng đợi chỉ có nghĩa khi job đang chờ (PENDING).
+  // Tiến độ cả đợt (đợt nhiều ngày bị tách thành job PLAN + N job-ngày, con số
+  // "3/7" nằm trên job PLAN). null = không phải đợt nhiều ngày.
+  const progress = activeJob ? await getJobProgress(activeJob) : null;
+  // Vị trí hàng đợi chỉ có nghĩa khi job đang chờ (PENDING) VÀ nó không thuộc
+  // một đợt nhiều ngày: các job-ngày của chính mình xếp hàng sau nhau, hiện
+  // "thứ 3 trong hàng đợi" cho chúng chỉ làm người dùng tưởng đang kẹt sau nhà
+  // khác, trong khi tiến độ "2/7 ngày" mới là thứ họ cần biết.
   const queuePos =
-    activeJob?.status === "PENDING" ? await getQueuePosition(activeJob) : null;
+    activeJob?.status === "PENDING" && !progress
+      ? await getQueuePosition(activeJob)
+      : null;
 
   const activeEditJobs = await getActiveEditJobs(familyId);
   const failedEditJobs = await getRecentFailedEditJobs(familyId);
@@ -144,14 +153,13 @@ export default async function DashboardPage({
                 <strong>{formatDay(dayKey(activeJob.date))}</strong>. Sẽ tự chạy
                 khi tới lượt.
               </>
-            ) : activeJob.days > 1 ? (
+            ) : progress ? (
               <>
-                Đang tạo thực đơn {activeJob.days} ngày từ{" "}
-                <strong>{formatDay(dayKey(activeJob.date))}</strong> —{" "}
+                Đang tạo thực đơn {progress.days} ngày —{" "}
                 <strong>
-                  xong {activeJob.doneDays}/{activeJob.days} ngày
+                  xong {progress.doneDays}/{progress.days} ngày
                 </strong>
-                . Bạn có thể rời trang, kết quả sẽ tự hiện ở đây.
+                . Mỗi ngày lưu xong hiện ngay bên dưới; bạn có thể rời trang.
               </>
             ) : (
               <>

@@ -273,6 +273,11 @@ model MealPlan {
   endDate   DateTime
   createdAt DateTime @default(now())
 
+  // Khung thực đơn cả đợt do pha 1 sinh ra (AiWeekPlan). Lưu xuống DB để mỗi
+  // job-ngày đọc lại được: đó là thứ giữ cho các ngày chạy RỜI NHAU vẫn không
+  // trùng món và vẫn xoay vòng đạm đều.
+  planJson Json?
+
   meals PlannedMeal[]
 
   @@index([familyId])
@@ -410,6 +415,12 @@ model GenerationJob {
   doneDays   Int     @default(0) // đã lưu xong mấy ngày (cho thẻ tiến độ)
   mealPlanId String? // MealPlan của lượt sinh này
 
+  // Đợt nhiều ngày được TÁCH thành nhiều job nhỏ, mỗi job một lời gọi AI, để
+  // không job nào chạm ngưỡng treo và để container restart chỉ mất một ngày.
+  kind        GenerationJobKind @default(SINGLE)
+  parentJobId String? // job PLAN đã đẻ ra job này (chỉ EXPAND_DAY)
+  dayOffset   Int? // ngày thứ mấy trong khoảng, 0-based (chỉ EXPAND_DAY)
+
   createdAt  DateTime  @default(now())
   startedAt  DateTime?
   finishedAt DateTime?
@@ -429,6 +440,16 @@ enum JobStatus {
   RUNNING
   DONE
   FAILED
+}
+
+// Loại job sinh thực đơn.
+//  - SINGLE:     một ngày, sinh thẳng kèm công thức (đường cũ, không đổi).
+//  - PLAN:       nhiều ngày, dựng KHUNG cả đợt rồi đẻ ra các job EXPAND_DAY.
+//  - EXPAND_DAY: nở đúng MỘT ngày từ khung đã lưu ở MealPlan.planJson.
+enum GenerationJobKind {
+  SINGLE
+  PLAN
+  EXPAND_DAY
 }
 
 // ------------------------------------------------------------------

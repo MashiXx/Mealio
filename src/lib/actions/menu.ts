@@ -111,6 +111,10 @@ export async function startGenerationAction(
       familyId,
       date: new Date(`${date}T00:00:00`), // midnight local; ngày ĐẦU của khoảng
       days,
+      // Nhiều ngày -> job PLAN: nó dựng khung cả đợt rồi đẻ ra từng job-ngày.
+      // Tách nhỏ để mỗi job chỉ tốn MỘT lời gọi AI, không job nào chạm ngưỡng
+      // treo, và container restart giữa chừng chỉ mất một ngày.
+      kind: days > 1 ? ("PLAN" as const) : ("SINGLE" as const),
       mealTypes: selected,
       dishCount,
       pantryMode,
