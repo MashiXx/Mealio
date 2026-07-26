@@ -144,6 +144,15 @@ export default async function DashboardPage({
                 <strong>{formatDay(dayKey(activeJob.date))}</strong>. Sẽ tự chạy
                 khi tới lượt.
               </>
+            ) : activeJob.days > 1 ? (
+              <>
+                Đang tạo thực đơn {activeJob.days} ngày từ{" "}
+                <strong>{formatDay(dayKey(activeJob.date))}</strong> —{" "}
+                <strong>
+                  xong {activeJob.doneDays}/{activeJob.days} ngày
+                </strong>
+                . Bạn có thể rời trang, kết quả sẽ tự hiện ở đây.
+              </>
             ) : (
               <>
                 Đang tạo thực đơn cho ngày{" "}
