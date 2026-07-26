@@ -421,6 +421,11 @@ model GenerationJob {
   parentJobId String? // job PLAN đã đẻ ra job này (chỉ EXPAND_DAY)
   dayOffset   Int? // ngày thứ mấy trong khoảng, 0-based (chỉ EXPAND_DAY)
 
+  // Ý muốn riêng cho LẦN NÀY do người dùng gõ ("nay thèm đồ ngọt", "tuần này ăn
+  // gà"). Khác EatingProfile.notes vốn là sở thích lâu dài. Job EXPAND_DAY kế
+  // thừa từ job PLAN nên cả đợt cùng một gợi ý.
+  userNote String?
+
   createdAt  DateTime  @default(now())
   startedAt  DateTime?
   finishedAt DateTime?

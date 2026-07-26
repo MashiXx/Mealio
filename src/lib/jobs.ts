@@ -181,6 +181,8 @@ async function runGenerationJob(jobId: string): Promise<void> {
       rawSlots,
       job.dishCount,
       mode,
+      undefined, // retryNote: chỉ gắn ở vòng sinh lại, không phải ở đây
+      job.userNote,
     );
 
     // Job xếp hàng lúc kho còn đồ, tới lượt chạy thì kho đã bị dọn. Prompt sẽ
@@ -312,6 +314,8 @@ async function runPlanJob(
         mealTypes: job.mealTypes,
         dishCount: job.dishCount,
         pantryMode: job.pantryMode,
+        // Kế thừa gợi ý từ job PLAN để cả đợt cùng một ý muốn.
+        userNote: job.userNote,
         status: "PENDING" as const,
       })),
     });

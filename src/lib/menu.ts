@@ -21,6 +21,7 @@ export async function buildMenuContext(
   dishCount?: number | null,
   pantryMode: "AVAILABLE_ONLY" | "FLEXIBLE" = "FLEXIBLE",
   retryNote?: string,
+  userNote?: string | null,
 ): Promise<MenuContext> {
   const [members, profile, pantry, recentRecipes, allRecipes] =
     await Promise.all([
@@ -92,6 +93,7 @@ export async function buildMenuContext(
     }),
     pantryMode,
     retryNote,
+    userNote: userNote ?? null,
   };
 }
 

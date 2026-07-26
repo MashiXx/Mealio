@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { startGenerationAction, type GenerateState } from "@/lib/actions/menu";
 import { MEAL_TYPES } from "@/lib/enums";
+import { USER_NOTE_MAX } from "@/lib/user-note";
 
 const initial: GenerateState = {};
 
@@ -208,6 +209,24 @@ export function NewMenuForm() {
           ))}
         </div>
       </fieldset>
+
+      <label className="block">
+        <span className="mb-1 block text-sm font-medium text-zinc-700">
+          Gợi ý cho lần này{" "}
+          <span className="font-normal text-zinc-400">(không bắt buộc)</span>
+        </span>
+        <textarea
+          name="userNote"
+          rows={2}
+          maxLength={USER_NOTE_MAX}
+          placeholder="Ví dụ: nay thèm đồ ngọt, tuần này ăn gà nhiều, hạn chế đồ chiên…"
+          className="w-full resize-y rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+        />
+        <span className="mt-1 block text-xs text-zinc-400">
+          Khác với hồ sơ ăn uống (sở thích lâu dài) — đây là ý muốn riêng cho lần
+          tạo này. Dị ứng và kiêng khem của thành viên vẫn luôn được ưu tiên hơn.
+        </span>
+      </label>
 
       <label className="block">
         <span className="mb-1 block text-sm font-medium text-zinc-700">

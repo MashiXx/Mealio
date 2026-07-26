@@ -6,6 +6,7 @@ import { requireFamily } from "@/lib/tenant";
 import { prisma } from "@/lib/db";
 import { getActiveJob, pumpJobs } from "@/lib/jobs";
 import { matchKey, staticKind } from "@/lib/pantry";
+import { normalizeUserNote } from "@/lib/user-note";
 import type { MealTypeStr } from "@/lib/ai/types";
 
 export type GenerateState = { error?: string };
@@ -115,6 +116,8 @@ export async function startGenerationAction(
       // Tách nhỏ để mỗi job chỉ tốn MỘT lời gọi AI, không job nào chạm ngưỡng
       // treo, và container restart giữa chừng chỉ mất một ngày.
       kind: days > 1 ? ("PLAN" as const) : ("SINGLE" as const),
+      // Cắt ở SERVER: maxLength trên input chỉ là gợi ý giao diện.
+      userNote: normalizeUserNote(formData.get("userNote")),
       mealTypes: selected,
       dishCount,
       pantryMode,
