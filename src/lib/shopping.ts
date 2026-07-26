@@ -46,7 +46,11 @@ async function lockFamily(
   tx: Prisma.TransactionClient,
   familyId: string,
 ): Promise<void> {
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${familyId}::text)::bigint)`;
+  // PHẢI là $executeRaw, KHÔNG phải $queryRaw: pg_advisory_xact_lock trả kiểu
+  // `void`, mà $queryRaw đọc kết quả trả về nên vấp ngay lúc giải mã cột —
+  // "Failed to deserialize column of type 'void'" (P2010), tức MỌI lượt đồng bộ
+  // đều nổ. $executeRaw chỉ chạy câu lệnh và trả số dòng, không đụng tới cột.
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${familyId}::text)::bigint)`;
 }
 
 /**

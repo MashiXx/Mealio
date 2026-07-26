@@ -7,23 +7,14 @@ import { DishInfo } from "../dashboard/DishInfo";
 import { DishPhoto, DishPhotoCredit } from "../dashboard/DishPhoto";
 import { DeleteMealButton } from "../dashboard/DeleteMealButton";
 import { pickHeroDish } from "@/lib/dish-image";
+import { ymd } from "@/lib/date";
 
 const MEAL_RANK: Record<string, number> = { BREAKFAST: 0, LUNCH: 1, DINNER: 2 };
 const PAGE_SIZE = 60;
 
-function dayKey(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
 function formatDay(key: string): string {
   const [y, m, d] = key.split("-");
   return `${d}/${m}/${y}`;
-}
-function todayStr(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
 }
 
 export default async function HistoryPage({
@@ -59,7 +50,7 @@ export default async function HistoryPage({
   // Nhóm theo ngày (giữ thứ tự mới -> cũ), sắp bữa sáng/trưa/tối trong ngày.
   const byDay = new Map<string, typeof meals>();
   for (const meal of meals) {
-    const key = dayKey(meal.date);
+    const key = ymd(meal.date);
     if (!byDay.has(key)) byDay.set(key, []);
     byDay.get(key)!.push(meal);
   }
@@ -69,7 +60,7 @@ export default async function HistoryPage({
   const days = [...byDay.keys()]; // đã desc theo thứ tự query
   const oldestKey = days.length ? days[days.length - 1] : null;
   const hasMore = meals.length === PAGE_SIZE;
-  const today = todayStr();
+  const today = ymd(new Date());
 
   return (
     <div className="space-y-6">
@@ -145,7 +136,7 @@ export default async function HistoryPage({
                         </form>
                         <DeleteMealButton
                           plannedMealId={meal.id}
-                          label={`${MEAL_TYPE_LABEL[meal.mealType] ?? meal.mealType} ngày ${formatDay(dayKey(meal.date))}`}
+                          label={`${MEAL_TYPE_LABEL[meal.mealType] ?? meal.mealType} ngày ${formatDay(ymd(meal.date))}`}
                           cooked={meal.cookedAt !== null}
                         />
                       </div>
