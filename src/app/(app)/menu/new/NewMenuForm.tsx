@@ -23,8 +23,10 @@ const QUICK_DAYS = [
   { label: "Ngày mai", offset: 1 },
 ];
 
-// Số ngày sinh liên tiếp.
-const DAY_COUNTS = [1, 3, 5, 7];
+// Số ngày sinh liên tiếp: cho chọn tự do 1..7, không gò vào vài mốc. Trần 7
+// khớp với chốt validate ở startGenerationAction.
+const MAX_DAYS = 7;
+const DAY_COUNTS = Array.from({ length: MAX_DAYS }, (_, i) => i + 1);
 
 /** Ngày thứ `n` của khoảng (n=1 là ngày bắt đầu), dạng dd/mm. */
 function dayOfRange(startYmd: string, n: number): string {
@@ -105,23 +107,30 @@ export function NewMenuForm() {
                     : undefined
                 }
                 onClick={() => setDays(n)}
-                className={`rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                className={`min-w-10 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                   days === n
                     ? "border-emerald-500 bg-emerald-50 font-medium text-emerald-700"
                     : "border-zinc-300 text-zinc-600 hover:border-zinc-400"
                 }`}
               >
-                {n} ngày
+                {n}
               </button>
             );
           })}
         </div>
-        {days > 1 && (
-          <p className="mt-2 text-xs text-zinc-500">
-            Sẽ tạo thực đơn từ {dayOfRange(date, 1)} đến {dayOfRange(date, days)}.
-            AI xem cả đợt cùng lúc để không lặp món và xoay vòng đạm.
-          </p>
-        )}
+        {/* Nút chỉ hiện con số nên dòng này phải có cả khi chọn 1 ngày, nếu
+            không người dùng không biết "1" nghĩa là gì. */}
+        <p className="mt-2 text-xs text-zinc-500">
+          {days === 1 ? (
+            <>Sẽ tạo thực đơn cho ngày {dayOfRange(date, 1)}.</>
+          ) : (
+            <>
+              Sẽ tạo thực đơn {days} ngày, từ {dayOfRange(date, 1)} đến{" "}
+              {dayOfRange(date, days)}. AI xem cả đợt cùng lúc để không lặp món
+              và xoay vòng đạm.
+            </>
+          )}
+        </p>
         {days >= 5 && (
           <p className="mt-1 text-xs text-amber-600">
             Đợt dài có thể mất 10–20 phút nếu bạn dùng Ollama tự host. Thực đơn
