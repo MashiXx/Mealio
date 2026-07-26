@@ -109,6 +109,9 @@ export async function saveMenu(
   familyId: string,
   menu: AiMenu,
   slots: MenuSlot[] = [],
+  // Gắn mâm vào MealPlan của lượt sinh nhiều ngày. Bỏ trống -> hành vi y như cũ,
+  // nên luồng một ngày không đổi gì.
+  mealPlanId: string | null = null,
 ): Promise<string[]> {
   const plannedCountOf = new Map(
     slots.map((s) => [`${s.date}|${s.mealType}`, s.dishRoles.length]),
@@ -131,6 +134,7 @@ export async function saveMenu(
       const planned = await tx.plannedMeal.create({
         data: {
           familyId,
+          mealPlanId,
           date: mealDate,
           mealType: meal.mealType,
           servings: meal.dishes[0]?.servings ?? 4,
