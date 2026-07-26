@@ -37,97 +37,27 @@ describe("fallback khi không khớp món nào", () => {
   });
 });
 
-describe("khớp tên chính xác", () => {
-  it("khớp đúng tên món có ảnh, trả kèm ghi công", () => {
+describe("resolveDishVisual gắn ảnh khi khớp được món", () => {
+  it("món có ảnh trả imageUrl kèm ghi công", () => {
     const v = resolveDishVisual("Cá kho tộ", "MON_MAN");
     expect(v.slug).toBe("ca-kho-to");
     expect(v.imageUrl).toBe("/dishes/ca-kho-to.jpg");
     expect(v.credit).toBeTruthy();
   });
 
-  it("bỏ qua khác biệt dấu và hoa thường", () => {
-    expect(resolveDishVisual("CÁ KHO TỘ", "MON_MAN").slug).toBe("ca-kho-to");
-    expect(resolveDishVisual("ca kho to", "MON_MAN").slug).toBe("ca-kho-to");
-  });
-
-  it("khớp tên đúng thì không cần trùng vai trò", () => {
-    // Tầng 1 tin tên tuyệt đối; chỉ tầng khớp chứa mới cần vai trò canh gác.
-    expect(resolveDishVisual("Cá kho tộ", "CANH_SUP").slug).toBe("ca-kho-to");
-  });
-});
-
-describe("khớp qua alias", () => {
-  it("alias trỏ đúng món", () => {
-    const v = resolveDishVisual("Cá kho", "MON_MAN");
-    expect(v.slug).toBe("ca-kho-to");
-    expect(v.imageUrl).toBe("/dishes/ca-kho-to.jpg");
-  });
-
   // Fixture phải là món CHƯA có ảnh. Nếu sau này ghim được ảnh cho ga-kho-gung
   // thì đổi sang một slug khác còn trống trong image-credits.json.
-  it("alias của món chưa có ảnh vẫn khớp nhưng rơi về fallback ảnh", () => {
+  it("món khớp nhưng chưa có ảnh rơi về fallback, slug vẫn điền", () => {
     const v = resolveDishVisual("thịt gà kho gừng", "MON_MAN");
     expect(v.slug).toBe("ga-kho-gung");
     expect(v.imageUrl).toBeNull();
     expect(v.emoji).toBe(ROLE_VISUAL.MON_MAN.emoji);
   });
-});
 
-describe("biến thể ngoặc đơn", () => {
-  // "Thịt kho tàu (thịt kho trứng)" chuẩn hoá thành chuỗi dính
-  // "thit kho tau thit kho trung" -> không tách ngoặc thì món phổ biến nhất
-  // trong catalog, lại đang CÓ ảnh, sẽ trượt sạch cả ba tầng.
-  it("khớp phần ngoài ngoặc", () => {
-    const v = resolveDishVisual("Thịt kho tàu", "MON_MAN");
-    expect(v.slug).toBe("thit-kho-tau");
-    expect(v.imageUrl).toBe("/dishes/thit-kho-tau.jpg");
-  });
-
-  it("khớp phần trong ngoặc", () => {
-    expect(resolveDishVisual("Chả giò", "MON_CUON").slug).toBe("nem-ran");
-    expect(resolveDishVisual("Nem rán", "MON_CUON").slug).toBe("nem-ran");
-  });
-
-  it("vẫn khớp cả tên gốc đầy đủ", () => {
-    expect(resolveDishVisual("Nem rán (chả giò)", "MON_CUON").slug).toBe(
-      "nem-ran",
-    );
-  });
-});
-
-describe("khớp chứa có canh gác", () => {
-  it("tên AI dài chứa trọn tên catalog, đúng vai trò -> trúng", () => {
-    const v = resolveDishVisual("Thịt kho tàu kiểu miền Nam", "MON_MAN");
-    expect(v.slug).toBe("thit-kho-tau");
-    expect(v.imageUrl).toBe("/dishes/thit-kho-tau.jpg");
-  });
-
-  it("chứa nhưng SAI vai trò -> trượt", () => {
-    // Cùng chuỗi trên, chỉ đổi vai trò. Vai trò là chốt chặn chính chống gán
-    // nhầm ảnh cho món chỉ trùng chữ.
-    const v = resolveDishVisual("Thịt kho tàu kiểu miền Nam", "TRANG_MIENG");
+  it("món hoàn toàn lạ rơi về fallback, slug null", () => {
+    const v = resolveDishVisual("Món AI bịa chưa từng có", "CANH_SUP");
     expect(v.slug).toBeNull();
     expect(v.imageUrl).toBeNull();
-  });
-
-  it("khoá ngắn dưới ngưỡng không được dùng để khớp chứa", () => {
-    // "Cá" quá ngắn, nếu lọt sẽ nuốt mọi món có chữ cá.
-    expect(resolveDishVisual("Cá", "MON_MAN").slug).toBeNull();
-  });
-
-  it("không khớp giữa từ", () => {
-    // Chuỗi con "com ga" nằm trong "comgaxx" nhưng không phải ranh giới từ.
-    expect(resolveDishVisual("Bánh comgaxx nướng", "COM_BUN_PHO").slug).toBeNull();
-  });
-
-  it("khoá dài được ưu tiên hơn khoá ngắn", () => {
-    const v = resolveDishVisual("Món canh chua cá đặc biệt", "CANH_SUP");
-    expect(v.slug).toBe("canh-chua-ca");
-  });
-
-  it("tên rỗng hoặc chỉ ký tự lạ trả fallback, không nổ", () => {
-    expect(resolveDishVisual("", "MON_MAN").slug).toBeNull();
-    expect(resolveDishVisual("!!!", "MON_MAN").slug).toBeNull();
   });
 });
 

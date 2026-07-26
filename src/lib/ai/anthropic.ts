@@ -6,12 +6,19 @@ import type {
   MemberImage,
   TestConnectionResult,
 } from "./types";
-import { buildMenuPrompt, buildEditPrompt, buildRecognitionPrompt } from "./prompt";
+import {
+  buildMenuPrompt,
+  buildWeekPlanPrompt,
+  buildEditPrompt,
+  buildRecognitionPrompt,
+} from "./prompt";
 import {
   parseMenuJson,
+  parseWeekPlanJson,
   parseEditJson,
   parseRecognitionJson,
   type AiMenu,
+  type AiWeekPlan,
   type AiEditResult,
   type MemberRecognition,
 } from "./schema";
@@ -41,6 +48,17 @@ export class AnthropicProvider implements AIProvider {
   async testConnection(): Promise<TestConnectionResult> {
     const res = await this.client().models.list();
     return { models: res.data.map((m) => m.id) };
+  }
+
+  async generateWeekPlan(ctx: MenuContext): Promise<AiWeekPlan> {
+    const { system, user } = buildWeekPlanPrompt(ctx);
+    const msg = await this.client().messages.create({
+      model: this.model,
+      max_tokens: 4096,
+      system,
+      messages: [{ role: "user", content: user }],
+    });
+    return parseWeekPlanJson(this.textOf(msg));
   }
 
   async generateMenu(ctx: MenuContext): Promise<AiMenu> {

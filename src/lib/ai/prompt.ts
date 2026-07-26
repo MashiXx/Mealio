@@ -1,5 +1,6 @@
 import type { MenuContext, EditContext, CatalogReference } from "./types";
 import { DISH_ROLE_LABEL } from "../enums";
+import { MAIN_PROTEINS } from "./schema";
 import { SEASONINGS_VI } from "@/data/seasonings";
 
 // Dựng prompt cho AI từ hồ sơ gia đình + kho thực phẩm + lịch sử.
@@ -52,6 +53,33 @@ const MEALTYPE_LABEL: Record<string, string> = {
   DINNER: "bữa tối",
 };
 
+/** Khối "Thành viên & sở thích" — dùng chung cho prompt sinh mâm và prompt khung. */
+function membersBlock(members: MenuContext["members"]): string {
+  return (
+    members
+      .map((m, i) => {
+        const parts = [`  ${i + 1}. ${m.name} (${m.ageGroup})`];
+        if (m.allergies.length) parts.push(`dị ứng: ${m.allergies.join(", ")}`);
+        if (m.dietaryRestrictions.length)
+          parts.push(`kiêng: ${m.dietaryRestrictions.join(", ")}`);
+        if (m.likes.length) parts.push(`thích: ${m.likes.join(", ")}`);
+        if (m.dislikes.length) parts.push(`ghét: ${m.dislikes.join(", ")}`);
+        return parts.join(" — ");
+      })
+      .join("\n") || "  (chưa có thông tin thành viên)"
+  );
+}
+
+/** Bảng slot "ngày · bữa: N món — vai trò" dùng chung cho hai prompt. */
+function slotsBlock(slots: MenuContext["slots"]): string {
+  return slots
+    .map((s) => {
+      const roles = s.dishRoles.map((r) => DISH_ROLE_LABEL[r] ?? r).join(", ");
+      return `  - ${s.date} · ${MEALTYPE_LABEL[s.mealType] ?? s.mealType}: ${s.dishRoles.length} món — ${roles}`;
+    })
+    .join("\n");
+}
+
 export function buildMenuPrompt(ctx: MenuContext): {
   system: string;
   user: string;
@@ -81,18 +109,7 @@ export function buildMenuPrompt(ctx: MenuContext): {
   ].join("\n");
 
   const p = ctx.profile;
-  const membersText =
-    ctx.members
-      .map((m, i) => {
-        const parts = [`  ${i + 1}. ${m.name} (${m.ageGroup})`];
-        if (m.allergies.length) parts.push(`dị ứng: ${m.allergies.join(", ")}`);
-        if (m.dietaryRestrictions.length)
-          parts.push(`kiêng: ${m.dietaryRestrictions.join(", ")}`);
-        if (m.likes.length) parts.push(`thích: ${m.likes.join(", ")}`);
-        if (m.dislikes.length) parts.push(`ghét: ${m.dislikes.join(", ")}`);
-        return parts.join(" — ");
-      })
-      .join("\n") || "  (chưa có thông tin thành viên)";
+  const membersText = membersBlock(ctx.members);
 
   // Kho vào prompt theo hai giọng khác hẳn nhau: AVAILABLE_ONLY biến kho thành
   // DANH SÁCH TRẮNG (luật cứng), FLEXIBLE chỉ nêu kho như gợi ý ưu tiên.
@@ -159,14 +176,7 @@ export function buildMenuPrompt(ctx: MenuContext): {
     ? "Trả về JSON theo đúng cấu trúc: mỗi phần tử meals ứng một bữa, dishes chỉ gồm những món nấu được bằng danh sách nguyên liệu trên."
     : "Trả về JSON theo đúng cấu trúc: mỗi phần tử meals ứng một bữa, dishes có đúng số món & vai trò yêu cầu.";
 
-  const slotsText = ctx.slots
-    .map((s) => {
-      const roles = s.dishRoles
-        .map((r) => DISH_ROLE_LABEL[r] ?? r)
-        .join(", ");
-      return `  - ${s.date} · ${MEALTYPE_LABEL[s.mealType] ?? s.mealType}: ${s.dishRoles.length} món — ${roles}`;
-    })
-    .join("\n");
+  const slotsText = slotsBlock(ctx.slots);
 
   const user = [
     `Số người trong gia đình: ${ctx.familySize}`,
@@ -195,11 +205,89 @@ export function buildMenuPrompt(ctx: MenuContext): {
     slotsText,
     "",
     catalogReferenceText(ctx.catalogReference),
+    // Khung cả đợt khi đang NỞ một ngày của thực đơn nhiều ngày; rỗng ở luồng
+    // một ngày nên prompt cũ không đổi.
+    ctx.planContext
+      ? [
+          "Khung thực đơn cả đợt (các ngày khác đã có gì — TRÁNH lặp nguyên liệu chính):",
+          ctx.planContext,
+        ].join("\n")
+      : "",
     // Câu nhắc khi sinh lại do mâm trước vi phạm kho; rỗng thì .filter bên dưới
     // tự loại, không để lại dòng trắng thừa.
     ctx.retryNote ?? "",
     pantryTail,
     closingLine,
+  ]
+    .filter((l) => l !== "")
+    .join("\n");
+
+  return { system, user };
+}
+
+/**
+ * Prompt PHA 1: dựng khung cho cả khoảng ngày. Cố ý KHÔNG đòi nguyên liệu và
+ * các bước — đó là việc của pha 2. Nhờ vậy model thấy trọn khoảng ngày trong
+ * một lượt (điều kiện để xoay vòng đạm và cân dinh dưỡng thật) mà output vẫn
+ * nhỏ hơn một ngày đầy đủ công thức.
+ */
+export function buildWeekPlanPrompt(ctx: MenuContext): {
+  system: string;
+  user: string;
+} {
+  const p = ctx.profile;
+  const dates = [...new Set(ctx.slots.map((s) => s.date))].sort();
+
+  const system = [
+    "Bạn vừa là CHUYÊN GIA DINH DƯỠNG, vừa là ĐẦU BẾP gia đình người Việt giàu kinh nghiệm.",
+    `Nhiệm vụ: lên KHUNG thực đơn cho ${dates.length} ngày liên tiếp — chỉ TÊN MÓN, vai trò, đạm chính và nhãn dinh dưỡng.`,
+    "TUYỆT ĐỐI KHÔNG trả về nguyên liệu hay các bước nấu ở bước này.",
+    "QUY TẮC BẮT BUỘC (an toàn):",
+    "- TUYỆT ĐỐI không dùng nguyên liệu gây dị ứng của bất kỳ thành viên nào.",
+    "- Tôn trọng các kiêng khem (ăn chay, không thịt bò, v.v.).",
+    "- Ưu tiên món hợp khẩu vị, tránh món bị ghét.",
+    "QUY TẮC CẢ ĐỢT (đây là lý do bạn được xem hết các ngày cùng lúc):",
+    "- KHÔNG có hai món trùng tên trong toàn bộ khoảng ngày (riêng đồ chua ăn kèm thì được lặp).",
+    "- Món mặn của hai ngày LIỀN NHAU phải khác đạm chính.",
+    "- Xoay vòng đạm chính cho đều cả đợt; trải đều nhãn dinh dưỡng, không dồn món nhiều dầu mỡ vào cùng vài ngày.",
+    "- Ưu tiên dùng sớm thực phẩm nhà đang có, nhất là thứ sắp hết hạn.",
+    `- mainProtein CHỈ được là một trong: ${MAIN_PROTEINS.join(", ")}.`,
+    "CHỈ trả về JSON, KHÔNG giải thích, KHÔNG markdown.",
+    'Cấu trúc: {"meals":[{"date":"yyyy-mm-dd","mealType":"BREAKFAST|LUNCH|DINNER","dishes":[{"name":"string","dishRole":"MON_MAN|MON_XAO|CANH_SUP|RAU_LUOC|LAU|COM_BUN_PHO|MON_CUON|TRANG_MIENG|DO_CHUA","mainProtein":"...","nutritionLabels":["string"]}]}]}',
+  ].join("\n");
+
+  const user = [
+    `Số người trong gia đình: ${ctx.familySize}`,
+    "",
+    "Thành viên & sở thích:",
+    membersBlock(ctx.members),
+    "",
+    "Hồ sơ ăn uống:",
+    `  - Khẩu vị vùng: ${REGION_LABEL[p.cuisineRegion] ?? p.cuisineRegion}`,
+    `  - Độ cay: ${SPICE_LABEL[p.spiceLevel] ?? p.spiceLevel}`,
+    `  - Ngân sách: ${BUDGET_LABEL[p.budgetLevel] ?? p.budgetLevel}`,
+    `  - Thời gian nấu tối đa mỗi món: ${p.maxCookMinutes} phút`,
+    `  - Mục tiêu healthy: ${p.healthGoals.length ? p.healthGoals.join(", ") : "cân bằng chung"}`,
+    p.notes ? `  - Ghi chú: ${p.notes}` : "",
+    "",
+    "Thực phẩm nhà đang có (ưu tiên dùng sớm):",
+    ctx.pantry.length
+      ? ctx.pantry
+          .map((x) => `  - ${x.name}${x.expiringSoon ? "  ⚠ nên dùng sớm" : ""}`)
+          .join("\n")
+      : "  (kho trống)",
+    "",
+    "Món đã ăn gần đây (TRÁNH lặp lại):",
+    ctx.recentRecipeNames.length
+      ? ctx.recentRecipeNames.map((n) => `  - ${n}`).join("\n")
+      : "  (chưa có)",
+    "",
+    "Hãy lên KHUNG cho ĐÚNG các bữa sau — mỗi bữa đúng số món và vai trò ghi kèm:",
+    slotsBlock(ctx.slots),
+    "",
+    catalogReferenceText(ctx.catalogReference),
+    ctx.retryNote ?? "",
+    "Nhắc lại: CHỈ trả tên món + vai trò + đạm chính + nhãn dinh dưỡng. Không nguyên liệu, không các bước.",
   ]
     .filter((l) => l !== "")
     .join("\n");

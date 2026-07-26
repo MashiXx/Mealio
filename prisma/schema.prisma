@@ -405,6 +405,11 @@ model GenerationJob {
   dishCount  Int? // số món/bữa chính người dùng chọn; null = tự động
   pantryMode PantryMode @default(FLEXIBLE) // chế độ dùng kho khi sinh thực đơn
 
+  // Sinh nhiều ngày: `date` giữ nguyên nghĩa là ngày ĐẦU của khoảng.
+  days       Int     @default(1) // số ngày trong khoảng, 1..7
+  doneDays   Int     @default(0) // đã lưu xong mấy ngày (cho thẻ tiến độ)
+  mealPlanId String? // MealPlan của lượt sinh này
+
   createdAt  DateTime  @default(now())
   startedAt  DateTime?
   finishedAt DateTime?

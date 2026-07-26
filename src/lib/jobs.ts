@@ -9,7 +9,9 @@ import {
   violationNote,
 } from "./pantry";
 import { syncShopping } from "./shopping";
-import type { MealTypeStr } from "./ai/types";
+import { verifyWeekPlan, weekPlanRetryNote } from "./week-plan";
+import { expandDay } from "./expand-plan";
+import type { MealTypeStr, MenuContext, AIProvider } from "./ai/types";
 import type { GenerationJob, EditJob } from "@prisma/client";
 
 // Quản lý job tạo thực đơn chạy ngầm với HÀNG ĐỢI + GIỚI HẠN ĐỒNG THỜI.
@@ -151,10 +153,20 @@ async function runGenerationJob(jobId: string): Promise<void> {
   if (!job) return;
 
   try {
-    const rawSlots = job.mealTypes.map((mealType) => ({
-      date: ymd(job.date),
-      mealType: mealType as MealTypeStr,
-    }));
+    // Khoảng ngày: job.date là ngày ĐẦU, job.days là số ngày. days=1 -> y hệt cũ.
+    const days = Math.max(1, Math.min(7, job.days));
+    const dateList: string[] = [];
+    for (let i = 0; i < days; i++) {
+      const d = new Date(job.date);
+      d.setDate(d.getDate() + i);
+      dateList.push(ymd(d));
+    }
+    const rawSlots = dateList.flatMap((date) =>
+      job.mealTypes.map((mealType) => ({
+        date,
+        mealType: mealType as MealTypeStr,
+      })),
+    );
 
     const mode = job.pantryMode as "AVAILABLE_ONLY" | "FLEXIBLE";
     const ctx = await buildMenuContext(
@@ -188,74 +200,191 @@ async function runGenerationJob(jobId: string): Promise<void> {
     }
 
     const provider = await getAIProvider(job.familyId);
-    let menu = await provider.generateMenu(ctx);
 
-    // Model có thể phớt lờ luật cứng trong prompt -> code kiểm lại. Chỉ sinh lại
-    // MỘT lần: vi phạm hai lần thì giữ mâm còn hơn bắt người dùng chờ thêm một
-    // vòng Ollama trên CPU. Phần thiếu còn lại không làm hỏng mâm — nó chảy tiếp
-    // vào danh sách đi chợ ở syncShopping bên dưới.
-    if (mode === "AVAILABLE_ONLY") {
-      const pantryNames = ctx.pantry.map((p) => p.name);
-      const pantry = toPantrySet(pantryNames);
-      // Cờ "đổi nhóm" phải nạp từ TOÀN BỘ Ingredient của gia đình. Dựng lookup từ
-      // ctx.pantry là NO-OP: map khi đó chỉ chứa khoá của thứ ĐANG CÓ trong kho,
-      // mà missingFor đã loại sạch những khoá đó ở vế "kho có rồi" nên chẳng bao
-      // giờ hỏi tới kind của chúng; còn đúng tập cần xét — thứ KHÔNG có trong kho —
-      // lại vắng mặt trong map nên rơi hết về bảng tĩnh. Kết quả y hệt truyền
-      // staticKind, tức verify phớt lờ cờ người dùng trong khi syncShopping vẫn
-      // tôn trọng nó: "mắm tôm" bị đổi thành SEASONING vẫn tốn một vòng sinh lại,
-      // còn "hành lá" đổi thành MAIN thì lọt verify rồi hiện ở danh sách đi chợ.
-      // Cũng KHÔNG tái dùng được ctx.pantry.kind: menu.ts đã ép `?? staticKind()`
-      // nên ở đó không còn phân biệt cờ của gia đình với mặc định tĩnh.
-      const familyIngredients = await prisma.ingredient.findMany({
-        where: { familyId: job.familyId },
-        select: { name: true, kind: true },
-      });
-      const kindOf = kindLookupFrom(familyIngredients);
-      const violations = verifyMenuAgainstPantry(menu, pantry, kindOf);
-      if (violations.length > 0) {
-        // Chỉ gắn thêm câu nhắc vào ctx CŨ, không dựng lại từ DB: rẻ hơn, và
-        // miễn nhiễm với việc kho đổi giữa hai vòng AI — nếu dựng lại mà lúc đó
-        // kho vừa bị dọn sạch thì prompt lần hai lại thành "(kho trống)" trong
-        // khi câu nhắc vẫn kể tên nguyên liệu cũ, tự mâu thuẫn.
-        menu = await provider.generateMenu({
-          ...ctx,
-          retryNote: violationNote(violations, pantryNames),
-        });
-      }
+    if (days === 1) {
+      // ĐƯỜNG CŨ, GIỮ NGUYÊN: một ngày vẫn sinh một lượt kèm công thức, và nhánh
+      // AVAILABLE_ONLY vẫn verify kho như trước. Đây là cách bảo đảm "chọn 1 ngày
+      // -> hành vi y hệt hiện tại" mà không phải tin vào suy luận.
+      await runSingleDay(job, jobId, ctx, mode, provider);
+    } else {
+      await runMultiDay(job, jobId, ctx, dateList, days, provider);
     }
-
-    // ctx.slots mang cơ cấu mâm đã yêu cầu cho từng bữa -> mỗi PlannedMeal ghi
-    // lại số món đáng lẽ có, để bảng chính biết mâm nào thật sự bị hụt.
-    await saveMenu(job.familyId, menu, ctx.slots);
 
     // Danh sách đi chợ là sản phẩm PHÁI SINH: hỏng nó không có nghĩa là hỏng thực
     // đơn. Tới đây mâm đã lưu xong và đã hiện trên bảng chính, nên để lỗi ném ra
     // ngoài sẽ đánh job thành FAILED kèm câu "kiểm tra API key/model" — sai lý do,
     // và người dùng có thể bấm sinh lại một vòng Ollama vô ích. syncShopping
     // idempotent nên lượt đồng bộ kế tiếp (sửa mâm, đổi kho, bấm "Đã nấu") tự chữa.
+    //
+    // Gọi MỘT lần sau khi xong cả khoảng, không gọi mỗi ngày: nó quét lại toàn bộ
+    // mâm sắp tới nên bảy lần gọi là bảy lần làm cùng một việc.
     try {
       await syncShopping(job.familyId);
     } catch (err) {
       console.error("[jobs] syncShopping lỗi sau khi đã lưu thực đơn:", err);
     }
 
-    await prisma.generationJob.update({
-      where: { id: jobId },
+    // runMultiDay có thể đã đánh job FAILED giữa chừng; đừng ghi đè thành DONE.
+    await prisma.generationJob.updateMany({
+      where: { id: jobId, status: "RUNNING" },
       data: { status: "DONE", finishedAt: new Date() },
     });
-  } catch (e) {
-    await prisma.generationJob.update({
-      where: { id: jobId },
-      data: {
-        status: "FAILED",
-        error:
-          (e instanceof Error ? e.message : "Không tạo được thực đơn.") +
-          " — kiểm tra API key/model hoặc thử lại.",
-        finishedAt: new Date(),
-      },
+  } catch (err) {
+    await failJob(jobId, err);
+  }
+}
+
+/** Đường một ngày: y hệt hành vi trước khi có tính năng nhiều ngày. */
+async function runSingleDay(
+  job: { familyId: string },
+  jobId: string,
+  ctx: MenuContext,
+  mode: "AVAILABLE_ONLY" | "FLEXIBLE",
+  provider: AIProvider,
+): Promise<void> {
+  let menu = await provider.generateMenu(ctx);
+
+  // Model có thể phớt lờ luật cứng trong prompt -> code kiểm lại. Chỉ sinh lại
+  // MỘT lần: vi phạm hai lần thì giữ mâm còn hơn bắt người dùng chờ thêm một
+  // vòng Ollama trên CPU. Phần thiếu còn lại không làm hỏng mâm — nó chảy tiếp
+  // vào danh sách đi chợ ở syncShopping.
+  if (mode === "AVAILABLE_ONLY") {
+    const pantryNames = ctx.pantry.map((p) => p.name);
+    const pantry = toPantrySet(pantryNames);
+    // Cờ "đổi nhóm" phải nạp từ TOÀN BỘ Ingredient của gia đình. Dựng lookup từ
+    // ctx.pantry là NO-OP: map khi đó chỉ chứa khoá của thứ ĐANG CÓ trong kho,
+    // mà missingFor đã loại sạch những khoá đó ở vế "kho có rồi" nên chẳng bao
+    // giờ hỏi tới kind của chúng; còn đúng tập cần xét — thứ KHÔNG có trong kho —
+    // lại vắng mặt trong map nên rơi hết về bảng tĩnh. Kết quả y hệt truyền
+    // staticKind, tức verify phớt lờ cờ người dùng trong khi syncShopping vẫn
+    // tôn trọng nó: "mắm tôm" bị đổi thành SEASONING vẫn tốn một vòng sinh lại,
+    // còn "hành lá" đổi thành MAIN thì lọt verify rồi hiện ở danh sách đi chợ.
+    // Cũng KHÔNG tái dùng được ctx.pantry.kind: menu.ts đã ép `?? staticKind()`
+    // nên ở đó không còn phân biệt cờ của gia đình với mặc định tĩnh.
+    const familyIngredients = await prisma.ingredient.findMany({
+      where: { familyId: job.familyId },
+      select: { name: true, kind: true },
+    });
+    const kindOf = kindLookupFrom(familyIngredients);
+    const violations = verifyMenuAgainstPantry(menu, pantry, kindOf);
+    if (violations.length > 0) {
+      // Chỉ gắn thêm câu nhắc vào ctx CŨ, không dựng lại từ DB: rẻ hơn, và
+      // miễn nhiễm với việc kho đổi giữa hai vòng AI — nếu dựng lại mà lúc đó
+      // kho vừa bị dọn sạch thì prompt lần hai lại thành "(kho trống)" trong
+      // khi câu nhắc vẫn kể tên nguyên liệu cũ, tự mâu thuẫn.
+      menu = await provider.generateMenu({
+        ...ctx,
+        retryNote: violationNote(violations, pantryNames),
+      });
+    }
+  }
+
+  // ctx.slots mang cơ cấu mâm đã yêu cầu cho từng bữa -> mỗi PlannedMeal ghi
+  // lại số món đáng lẽ có, để bảng chính biết mâm nào thật sự bị hụt.
+  await saveMenu(job.familyId, menu, ctx.slots);
+}
+
+/**
+ * Đường nhiều ngày, HAI PHA.
+ *
+ * Tới đây pantryMode luôn là FLEXIBLE: server action chặn AVAILABLE_ONLY khi
+ * days > 1 (nấu cả tuần thuần bằng kho hiện có là vô nghĩa, kho cạn sau một hai
+ * ngày). Nên KHÔNG có verifyMenuAgainstPantry ở đây — không phải bỏ sót.
+ */
+async function runMultiDay(
+  job: { familyId: string },
+  jobId: string,
+  ctx: MenuContext,
+  dateList: string[],
+  days: number,
+  provider: AIProvider,
+): Promise<void> {
+  // ---------- PHA 1: khung cho cả khoảng ----------
+  let plan = await provider.generateWeekPlan(ctx);
+
+  // Model hay phớt lờ luật cứng -> code kiểm lại. Chỉ sinh lại MỘT lần: vi phạm
+  // hai lần thì nhận khung đó còn hơn bắt người dùng chờ thêm một vòng Ollama
+  // trên CPU. Cùng lập luận với nhánh AVAILABLE_ONLY ở đường một ngày.
+  const violations = verifyWeekPlan(plan, ctx.slots);
+  if (violations.length > 0) {
+    plan = await provider.generateWeekPlan({
+      ...ctx,
+      retryNote: weekPlanRetryNote(violations),
     });
   }
+
+  // MealPlan tạo SAU khi khung đã qua verify (lúc đó mới chắc khoảng ngày hợp lệ)
+  // và TRƯỚC lần saveMenu đầu tiên, để mọi PlannedMeal gắn được mealPlanId.
+  const mealPlan = await prisma.mealPlan.create({
+    data: {
+      familyId: job.familyId,
+      startDate: new Date(`${dateList[0]}T00:00:00`),
+      endDate: new Date(`${dateList[dateList.length - 1]}T00:00:00`),
+    },
+    select: { id: true },
+  });
+  await prisma.generationJob.update({
+    where: { id: jobId },
+    data: { mealPlanId: mealPlan.id },
+  });
+
+  // ---------- PHA 2: nở từng ngày, lưu ngay từng ngày ----------
+  const servings = Math.max(1, ctx.familySize);
+  for (const date of dateList) {
+    try {
+      const meals = await expandDay(plan, date, {
+        provider,
+        baseCtx: ctx,
+        slots: ctx.slots,
+        servings,
+      });
+      if (meals.length > 0) {
+        await saveMenu(
+          job.familyId,
+          { meals },
+          ctx.slots.filter((s) => s.date === date),
+          mealPlan.id,
+        );
+      }
+    } catch (err) {
+      // Các ngày trước đã lưu xong và đang hiện trên bảng chính. Nói rõ hỏng từ
+      // ngày nào thay vì nuốt lỗi hoặc xoá sạch phần đã làm được.
+      const done = await prisma.generationJob.findUnique({
+        where: { id: jobId },
+        select: { doneDays: true },
+      });
+      await prisma.generationJob.update({
+        where: { id: jobId },
+        data: {
+          status: "FAILED",
+          error: `Đã tạo xong ${done?.doneDays ?? 0}/${days} ngày. Ngày ${date} lỗi: ${
+            err instanceof Error ? err.message : String(err)
+          }. Các ngày đã tạo vẫn giữ nguyên.`,
+          finishedAt: new Date(),
+        },
+      });
+      return;
+    }
+
+    await prisma.generationJob.update({
+      where: { id: jobId },
+      data: { doneDays: { increment: 1 } },
+    });
+  }
+}
+
+/** Đánh job FAILED kèm lý do. Không ném lỗi ra ngoài. */
+async function failJob(jobId: string, e: unknown): Promise<void> {
+  await prisma.generationJob.update({
+    where: { id: jobId },
+    data: {
+      status: "FAILED",
+      error:
+        (e instanceof Error ? e.message : "Không tạo được thực đơn.") +
+        " — kiểm tra API key/model hoặc thử lại.",
+      finishedAt: new Date(),
+    },
+  });
 }
 
 /** Worker cho EditJob: dựng ngữ cảnh, gọi AI sửa mâm, áp kết quả. */

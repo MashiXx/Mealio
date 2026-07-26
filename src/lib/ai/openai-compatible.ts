@@ -5,12 +5,19 @@ import type {
   MemberImage,
   TestConnectionResult,
 } from "./types";
-import { buildMenuPrompt, buildEditPrompt, buildRecognitionPrompt } from "./prompt";
+import {
+  buildMenuPrompt,
+  buildWeekPlanPrompt,
+  buildEditPrompt,
+  buildRecognitionPrompt,
+} from "./prompt";
 import {
   parseMenuJson,
+  parseWeekPlanJson,
   parseEditJson,
   parseRecognitionJson,
   type AiMenu,
+  type AiWeekPlan,
   type AiEditResult,
   type MemberRecognition,
 } from "./schema";
@@ -37,6 +44,19 @@ export class OpenAICompatibleProvider implements AIProvider {
   async testConnection(): Promise<TestConnectionResult> {
     const res = await this.client().models.list();
     return { models: res.data.map((m) => m.id) };
+  }
+
+  async generateWeekPlan(ctx: MenuContext): Promise<AiWeekPlan> {
+    const { system, user } = buildWeekPlanPrompt(ctx);
+    const res = await this.client().chat.completions.create({
+      model: this.model,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      response_format: { type: "json_object" },
+    });
+    return parseWeekPlanJson(res.choices[0]?.message?.content ?? "");
   }
 
   async generateMenu(ctx: MenuContext): Promise<AiMenu> {
