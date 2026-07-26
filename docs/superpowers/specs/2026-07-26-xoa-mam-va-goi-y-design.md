@@ -34,15 +34,24 @@ lượt đồng bộ sau. Sửa luôn trong đợt này vì cùng một loại l
 
 ## Hai cái bẫy phải xử lý
 
-### Mâm zombie
+### Mâm zombie — và vì sao "huỷ job PENDING" là cách SAI
 
-Đợt nhiều ngày giờ là job `PLAN` + N job `EXPAND_DAY` chạy lần lượt. Xoá mâm của
-một ngày mà job-ngày đó **chưa chạy** thì lát sau nó sinh lại — mâm "sống dậy",
-người dùng tưởng nút xoá hỏng.
+Ý đầu tiên là huỷ các job `EXPAND_DAY` đang `PENDING` của ngày bị xoá. Truy lại
+luồng thì cách đó vừa thừa vừa hại:
 
-Nên `deleteMealAction`/`deleteDayAction` phải **huỷ luôn các job `EXPAND_DAY`
-đang `PENDING`** trỏ vào ngày đó (xoá dòng job). Chỉ nhắm `PENDING`: job đang
-`RUNNING` mà xoá dòng thì worker nổ lúc cập nhật trạng thái.
+- Job `EXPAND_DAY` chính là thứ **tạo ra** mâm của ngày đó. Job còn `PENDING`
+  nghĩa là mâm **chưa tồn tại** — không có gì để xoá, người dùng cũng không thấy
+  nút xoá nào.
+- Khi mâm đã tồn tại thì job của nó đã `DONE`, câu `deleteMany` khớp 0 dòng.
+- Trường hợp duy nhất khớp cả hai điều kiện: mâm cũ từ đợt trước, cộng job đang
+  chờ của **đợt mới**. Huỷ nó chính là huỷ thứ người dùng vừa bấm yêu cầu sinh,
+  mà lại im lặng.
+
+Rủi ro zombie **thật** nằm chỗ khác: xoá đúng lúc job của ngày đó đang `RUNNING`
+nhưng chưa kịp gọi `saveMenu` — xoá xong nó tạo lại.
+
+Nên cách đúng là **chặn**, không phải huỷ: còn job sinh `PENDING`/`RUNNING` cho
+ngày đó thì từ chối xoá.
 
 ### Xoá lúc đang sửa
 
@@ -74,13 +83,12 @@ Trình tự mỗi hàm:
 1. `requireFamily()` → lấy `familyId`
 2. Xác minh mâm/ngày **thuộc gia đình này** (chống xoá chéo nhà)
 3. Từ chối nếu còn `EditJob` `PENDING`/`RUNNING` cho mâm đó
-4. Xoá `GenerationJob` `kind = EXPAND_DAY`, `status = PENDING`, đúng `date` đó
+4. Từ chối nếu còn `GenerationJob` `PENDING`/`RUNNING` cho **ngày** đó
 5. `prisma.plannedMeal.deleteMany({ where: { id / date, familyId } })`
 6. `syncShopping(familyId)`
 7. `revalidatePath("/dashboard")` **và** `revalidatePath("/history")`
 
-Bước 4 và 5 nằm trong **một transaction**: nếu xoá mâm xong mà huỷ job hỏng thì
-mâm zombie quay lại.
+Không cần transaction: chỉ còn đúng một câu ghi.
 
 `deleteDayAction` nhận chuỗi `yyyy-mm-dd`, quy về `new Date(\`${d}T00:00:00\`)`
 đúng cách `PlannedMeal.date` được lưu (midnight local, xem `saveMenu`).
@@ -169,9 +177,8 @@ Các action xoá chạm DB nên **không** test bằng vitest, đúng lệ repo
 
 1. Xoá được một mâm ở Dashboard và ở Lịch sử; danh sách đi chợ cập nhật theo.
 2. Xoá cả ngày xoá đúng mọi bữa của ngày đó, không đụng ngày khác.
-3. Xoá mâm của một ngày chưa sinh xong → job-ngày `PENDING` bị huỷ, mâm **không**
-   sống dậy.
-4. Mâm đang có `EditJob` hoạt động → từ chối xoá kèm thông báo rõ.
+3. Ngày đang có job sinh chạy dở → từ chối xoá, mâm **không** sống dậy.
+4. Mâm đang có `EditJob` hoạt động → từ chối xoá.
 5. Xoá một món (`deleteDishAction`) cũng cập nhật danh sách đi chợ.
 6. Gợi ý tự nhập xuất hiện trong prompt của cả đường một ngày lẫn đường nhiều ngày.
 7. `yarn test`, `yarn lint`, `yarn build` sạch.

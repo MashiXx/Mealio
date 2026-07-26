@@ -14,6 +14,7 @@ import { ackJobAction } from "@/lib/actions/menu";
 import { ackEditJobAction } from "@/lib/actions/edit";
 import { JobPoller } from "./JobPoller";
 import { MealCard, type MealView } from "./MealCard";
+import { DeleteDayButton } from "./DeleteDayButton";
 
 const MEAL_RANK: Record<string, number> = {
   BREAKFAST: 0,
@@ -249,9 +250,16 @@ export default async function DashboardPage({
                   : "border-zinc-200"
               }`}
             >
-              <h2 className="mb-3 text-sm font-semibold text-zinc-500">
-                {formatDay(key)}
-              </h2>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="text-sm font-semibold text-zinc-500">
+                  {formatDay(key)}
+                </h2>
+                <DeleteDayButton
+                  date={key}
+                  label={formatDay(key)}
+                  mealCount={byDay.get(key)!.length}
+                />
+              </div>
               <div className="space-y-3">
                 {byDay.get(key)!.map((meal) => {
                   const view: MealView = {

@@ -5,6 +5,7 @@ import { MEAL_TYPE_LABEL, DISH_ROLE_LABEL } from "@/lib/enums";
 import { recookAction } from "@/lib/actions/recook";
 import { DishInfo } from "../dashboard/DishInfo";
 import { DishPhoto, DishPhotoCredit } from "../dashboard/DishPhoto";
+import { DeleteMealButton } from "../dashboard/DeleteMealButton";
 import { pickHeroDish } from "@/lib/dish-image";
 
 const MEAL_RANK: Record<string, number> = { BREAKFAST: 0, LUNCH: 1, DINNER: 2 };
@@ -142,6 +143,11 @@ export default async function HistoryPage({
                             Nấu lại
                           </button>
                         </form>
+                        <DeleteMealButton
+                          plannedMealId={meal.id}
+                          label={`${MEAL_TYPE_LABEL[meal.mealType] ?? meal.mealType} ngày ${formatDay(dayKey(meal.date))}`}
+                          cooked={meal.cookedAt !== null}
+                        />
                       </div>
                       {/* Phần đầu thị giác: ảnh bìa + lưới món. Trang này là
                           server component nên KHÔNG có panel bấm-để-chọn như

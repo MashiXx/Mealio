@@ -13,6 +13,7 @@ import {
 // bundle client. Đi qua <form action={...}> thay vì onClick để bấm được cả khi JS
 // chưa hydrate xong.
 import { markCookedAction } from "@/lib/actions/cook";
+import { deleteMealAction } from "@/lib/actions/meal";
 import { DishInfo } from "./DishInfo";
 import { DishPhoto, DishPhotoCredit } from "./DishPhoto";
 import { pickHeroDish } from "@/lib/dish-image";
@@ -177,6 +178,28 @@ export function MealCard({
               chưa đủ nguyên liệu cho các vai trò còn lại.
             </span>
           )}
+        {/* Xoá cả mâm. Dùng <form action> như nút "Đã nấu" để bấm được cả khi
+            JS chưa hydrate; onSubmit chỉ để hỏi xác nhận. */}
+        <form
+          action={deleteMealAction}
+          onSubmit={(e) => {
+            const warn = meal.cooked
+              ? "\n\nMâm này đã bấm Đã nấu — kho đã bị trừ và sẽ KHÔNG được hoàn lại."
+              : "";
+            if (!confirm(`Xoá ${meal.mealTypeLabel.toLowerCase()} này?${warn}`)) {
+              e.preventDefault();
+            }
+          }}
+        >
+          <input type="hidden" name="plannedMealId" value={meal.id} />
+          <button
+            type="submit"
+            disabled={anyBusy}
+            className="rounded border border-red-200 px-2 py-1 text-xs font-medium text-red-500 hover:bg-red-50 disabled:opacity-50"
+          >
+            Xoá mâm
+          </button>
+        </form>
         {mealBusy && (
           <span className="flex items-center gap-1 text-xs text-amber-600">
             <span className="h-3 w-3 animate-spin rounded-full border-2 border-amber-300 border-t-amber-600" />
