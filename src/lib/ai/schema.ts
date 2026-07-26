@@ -43,6 +43,59 @@ export type AiMenu = z.infer<typeof aiMenuSchema>;
 export type AiMeal = z.infer<typeof aiMealSchema>;
 export type AiDish = z.infer<typeof aiDishSchema>;
 
+// ------------------------------------------------------------------
+// Khung thực đơn nhiều ngày (pha 1). Cố ý KHÔNG có nguyên liệu và các bước:
+// cả tuần đầy đủ công thức là ~42 món, prompt khổng lồ và Ollama trên CPU
+// không kham nổi. Khung chỉ mang đủ thứ cần để cân đối và bắt lặp.
+// ------------------------------------------------------------------
+
+/**
+ * Trục đạm chính. Cố ý HẸP và đóng: enum mở thì model trả "thịt" ở ngày này và
+ * "thịt heo" ở ngày kia, luật "hai ngày liền không trùng đạm" mất tác dụng.
+ */
+export const MAIN_PROTEINS = [
+  "THIT_HEO",
+  "THIT_BO",
+  "THIT_GA",
+  "CA",
+  "TOM_CUA",
+  "TRUNG",
+  "DAU_PHU",
+  "RAU_CU",
+] as const;
+export type MainProtein = (typeof MAIN_PROTEINS)[number];
+
+export const aiPlanDishSchema = z.object({
+  name: z.string().min(1),
+  dishRole: z.enum([
+    "MON_MAN",
+    "MON_XAO",
+    "CANH_SUP",
+    "RAU_LUOC",
+    "LAU",
+    "COM_BUN_PHO",
+    "MON_CUON",
+    "TRANG_MIENG",
+    "DO_CHUA",
+  ]),
+  mainProtein: z.enum(MAIN_PROTEINS),
+  nutritionLabels: z.array(z.string()).default([]),
+});
+
+export const aiPlanMealSchema = z.object({
+  date: z.string(), // yyyy-mm-dd
+  mealType: z.enum(["BREAKFAST", "LUNCH", "DINNER"]),
+  dishes: z.array(aiPlanDishSchema).min(1),
+});
+
+export const aiWeekPlanSchema = z.object({
+  meals: z.array(aiPlanMealSchema).min(1),
+});
+
+export type AiWeekPlan = z.infer<typeof aiWeekPlanSchema>;
+export type AiPlanMeal = z.infer<typeof aiPlanMealSchema>;
+export type AiPlanDish = z.infer<typeof aiPlanDishSchema>;
+
 // Kết quả AI trả về khi SỬA mâm: danh sách món (1 món cho DISH/ADD, cả mâm cho MEAL).
 export const aiEditSchema = z.object({
   dishes: z.array(aiDishSchema).min(1),
@@ -85,6 +138,17 @@ export function parseMenuJson(text: string): AiMenu {
   if (!result.success) {
     throw new Error(
       "JSON từ AI không đúng cấu trúc thực đơn: " + result.error.message,
+    );
+  }
+  return result.data;
+}
+
+/** Validate JSON khung thực đơn nhiều ngày theo aiWeekPlanSchema. */
+export function parseWeekPlanJson(text: string): AiWeekPlan {
+  const result = aiWeekPlanSchema.safeParse(extractJson(text));
+  if (!result.success) {
+    throw new Error(
+      "JSON từ AI không đúng cấu trúc khung thực đơn: " + result.error.message,
     );
   }
   return result.data;
