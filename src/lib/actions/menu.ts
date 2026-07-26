@@ -48,11 +48,29 @@ export async function startGenerationAction(
     dishCount = n;
   }
 
+  // Số ngày sinh liên tiếp, tính từ `date`. Mặc định 1 = hành vi cũ.
+  const rawDays = String(formData.get("days") ?? "1");
+  const days = parseInt(rawDays, 10);
+  if (!Number.isInteger(days) || days < 1 || days > 7) {
+    return { error: "Số ngày phải từ 1 đến 7." };
+  }
+
   // Chỉ hai giá trị hợp lệ; mọi thứ khác rơi về FLEXIBLE (kho chỉ là gợi ý).
   const pantryMode =
     String(formData.get("pantryMode") ?? "") === "AVAILABLE_ONLY"
       ? ("AVAILABLE_ONLY" as const)
       : ("FLEXIBLE" as const);
+
+  // "Nấu bằng đồ có sẵn" chỉ có nghĩa cho MỘT ngày: kho hiện có cạn ngay sau một
+  // hai bữa, nên bảy ngày thuần bằng kho là yêu cầu không có lời giải. Chốt này
+  // cũng giữ cho luồng nhiều ngày luôn là FLEXIBLE, nhờ đó đường một ngày (kèm
+  // verifyMenuAgainstPantry) không phải đụng tới.
+  if (pantryMode === "AVAILABLE_ONLY" && days > 1) {
+    return {
+      error:
+        'Chế độ "Nấu bằng đồ có sẵn" chỉ tạo được cho 1 ngày, vì kho nhà không đủ cho nhiều ngày liên tiếp. Chọn 1 ngày, hoặc đổi sang chế độ Thoải mái.',
+    };
+  }
 
   // Chế độ "đồ có sẵn" mà kho rỗng thì không có gì để nấu — chặn ngay, đừng tạo
   // job. Chỉ đếm nguyên liệu MAIN: kho chỉ có mắm muối không phải là "có đồ".
@@ -91,7 +109,8 @@ export async function startGenerationAction(
   await prisma.generationJob.create({
     data: {
       familyId,
-      date: new Date(`${date}T00:00:00`), // midnight local
+      date: new Date(`${date}T00:00:00`), // midnight local; ngày ĐẦU của khoảng
+      days,
       mealTypes: selected,
       dishCount,
       pantryMode,
