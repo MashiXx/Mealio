@@ -23,6 +23,7 @@ export default async function CatalogPage() {
     tags: d.tags,
     notes: d.notes ?? null,
     imageUrl: d.imageUrl ?? null,
+    imageCredit: d.imageCredit ?? null,
     steps: d.steps,
     ingredients: d.ingredients,
   }));
@@ -34,7 +35,11 @@ export default async function CatalogPage() {
     region: m.region,
     servings: m.servings,
     note: m.note ?? null,
-    dishNames: getSetMenuDishes(m).map((d) => d.name),
+    dishes: getSetMenuDishes(m).map((d) => ({
+      slug: d.slug,
+      name: d.name,
+      dishRole: d.dishRole,
+    })),
   }));
 
   return <CatalogBrowser dishes={dishes} setMenus={setMenus} />;
