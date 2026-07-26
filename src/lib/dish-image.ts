@@ -1,5 +1,5 @@
-import { allDishes, type CatalogDishData } from "@/data/catalog";
-import { normalizeIngredient } from "./normalize";
+import type { CatalogDishData } from "@/data/catalog";
+import { findCatalogDish } from "./catalog-match";
 
 // Nối món trên mâm (Recipe do AI sinh) với ảnh trong kho món catalog. Recipe
 // KHÔNG có khoá ngoại nào trỏ về CatalogDish, nên phải khớp theo TÊN lúc đọc.
@@ -64,57 +64,6 @@ export type DishVisual = {
   slug: string | null;
 };
 
-/**
- * Các khoá tra cứu sinh ra từ một tên món. Ngoài tên đã chuẩn hoá, còn tách
- * riêng phần ngoài ngoặc và phần trong ngoặc: normalizeIngredient biến dấu
- * ngoặc thành khoảng trắng nên "Thịt kho tàu (thịt kho trứng)" dính lại thành
- * "thit kho tau thit kho trung" — không tách thì AI trả "Thịt kho tàu" sẽ trượt.
- */
-function keysFromName(raw: string): string[] {
-  const out = new Set<string>();
-  const push = (s: string) => {
-    const k = normalizeIngredient(s);
-    if (k) out.add(k);
-  };
-
-  push(raw);
-  push(raw.replace(/\([^)]*\)/g, " "));
-  for (const m of raw.matchAll(/\(([^)]*)\)/g)) push(m[1]);
-
-  return [...out];
-}
-
-const byName = new Map<string, CatalogDishData>();
-const byAlias = new Map<string, CatalogDishData>();
-
-for (const dish of allDishes) {
-  for (const k of keysFromName(dish.name)) {
-    if (!byName.has(k)) byName.set(k, dish);
-  }
-}
-for (const dish of allDishes) {
-  for (const alias of dish.aliases) {
-    for (const k of keysFromName(alias)) {
-      // Alias không được cướp khoá của một TÊN món khác.
-      if (byName.has(k) || byAlias.has(k)) continue;
-      byAlias.set(k, dish);
-    }
-  }
-}
-
-/** Khoá ngắn hơn ngưỡng này không được dùng cho khớp chứa. Tên món ngắn nhất
- *  trong catalog là "pho bo"/"com ga" (6 ký tự) — đặt cao hơn là mất hẳn khả
- *  năng khớp "Phở bò tái nạm". */
-const MIN_CONTAIN_LEN = 6;
-
-// Khoá đủ dài để dùng cho khớp chứa, dài trước để "canh chua ca" thắng "canh chua".
-const containKeys: { key: string; dish: CatalogDishData }[] = [
-  ...[...byName.entries()].map(([key, dish]) => ({ key, dish })),
-  ...[...byAlias.entries()].map(([key, dish]) => ({ key, dish })),
-]
-  .filter((e) => e.key.length >= MIN_CONTAIN_LEN)
-  .sort((a, b) => b.key.length - a.key.length);
-
 function fallback(dishRole: string): DishVisual {
   const rv = ROLE_VISUAL[dishRole] ?? NEUTRAL_VISUAL;
   return {
@@ -141,22 +90,9 @@ function hit(dish: CatalogDishData, dishRole: string): DishVisual {
 }
 
 export function resolveDishVisual(name: string, dishRole: string): DishVisual {
-  const n = normalizeIngredient(name ?? "");
-  if (!n) return fallback(dishRole);
-
-  const exact = byName.get(n) ?? byAlias.get(n);
-  if (exact) return hit(exact, dishRole);
-
-  // Tầng 3: tên AI chứa trọn tên catalog. Hai chốt chặn bắt buộc — đệm khoảng
-  // trắng hai đầu để chỉ khớp theo biên từ, và phải trùng vai trò. Thiếu chúng
-  // thì "cá" sẽ gán ảnh cá kho tộ cho mọi món có chữ cá.
-  const padded = ` ${n} `;
-  for (const { key, dish } of containKeys) {
-    if (dish.dishRole !== dishRole) continue;
-    if (padded.includes(` ${key} `)) return hit(dish, dishRole);
-  }
-
-  return fallback(dishRole);
+  const dish = findCatalogDish(name, dishRole);
+  if (!dish) return fallback(dishRole);
+  return hit(dish, dishRole);
 }
 
 // Thứ tự ưu tiên khi chọn món làm ảnh bìa của mâm.
