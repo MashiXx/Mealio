@@ -1,3 +1,6 @@
+import { allDishes, type CatalogDishData } from "@/data/catalog";
+import { normalizeIngredient } from "./normalize";
+
 // Nối món trên mâm (Recipe do AI sinh) với ảnh trong kho món catalog. Recipe
 // KHÔNG có khoá ngoại nào trỏ về CatalogDish, nên phải khớp theo TÊN lúc đọc.
 // Chọn khớp lúc đọc thay vì lưu vào DB: không cần migration, và mâm cũ trong
@@ -61,6 +64,44 @@ export type DishVisual = {
   slug: string | null;
 };
 
+/**
+ * Các khoá tra cứu sinh ra từ một tên món. Ngoài tên đã chuẩn hoá, còn tách
+ * riêng phần ngoài ngoặc và phần trong ngoặc: normalizeIngredient biến dấu
+ * ngoặc thành khoảng trắng nên "Thịt kho tàu (thịt kho trứng)" dính lại thành
+ * "thit kho tau thit kho trung" — không tách thì AI trả "Thịt kho tàu" sẽ trượt.
+ */
+function keysFromName(raw: string): string[] {
+  const out = new Set<string>();
+  const push = (s: string) => {
+    const k = normalizeIngredient(s);
+    if (k) out.add(k);
+  };
+
+  push(raw);
+  push(raw.replace(/\([^)]*\)/g, " "));
+  for (const m of raw.matchAll(/\(([^)]*)\)/g)) push(m[1]);
+
+  return [...out];
+}
+
+const byName = new Map<string, CatalogDishData>();
+const byAlias = new Map<string, CatalogDishData>();
+
+for (const dish of allDishes) {
+  for (const k of keysFromName(dish.name)) {
+    if (!byName.has(k)) byName.set(k, dish);
+  }
+}
+for (const dish of allDishes) {
+  for (const alias of dish.aliases) {
+    for (const k of keysFromName(alias)) {
+      // Alias không được cướp khoá của một TÊN món khác.
+      if (byName.has(k) || byAlias.has(k)) continue;
+      byAlias.set(k, dish);
+    }
+  }
+}
+
 function fallback(dishRole: string): DishVisual {
   const rv = ROLE_VISUAL[dishRole] ?? NEUTRAL_VISUAL;
   return {
@@ -72,6 +113,26 @@ function fallback(dishRole: string): DishVisual {
   };
 }
 
+/** Dựng kết quả từ một món catalog đã khớp. Món chưa có ảnh thì vẫn trả slug —
+ *  gọi bên ngoài biết là khớp được, chỉ là chưa có ảnh để dùng. */
+function hit(dish: CatalogDishData, dishRole: string): DishVisual {
+  if (!dish.imageUrl) return { ...fallback(dishRole), slug: dish.slug };
+  const rv = ROLE_VISUAL[dish.dishRole] ?? NEUTRAL_VISUAL;
+  return {
+    imageUrl: dish.imageUrl,
+    credit: dish.imageCredit ?? null,
+    emoji: rv.emoji,
+    gradientClass: rv.gradientClass,
+    slug: dish.slug,
+  };
+}
+
 export function resolveDishVisual(name: string, dishRole: string): DishVisual {
+  const n = normalizeIngredient(name ?? "");
+  if (!n) return fallback(dishRole);
+
+  const exact = byName.get(n) ?? byAlias.get(n);
+  if (exact) return hit(exact, dishRole);
+
   return fallback(dishRole);
 }

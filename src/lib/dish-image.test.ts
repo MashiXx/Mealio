@@ -36,3 +36,68 @@ describe("fallback khi không khớp món nào", () => {
     }
   });
 });
+
+describe("khớp tên chính xác", () => {
+  it("khớp đúng tên món có ảnh, trả kèm ghi công", () => {
+    const v = resolveDishVisual("Cá kho tộ", "MON_MAN");
+    expect(v.slug).toBe("ca-kho-to");
+    expect(v.imageUrl).toBe("/dishes/ca-kho-to.jpg");
+    expect(v.credit).toBeTruthy();
+  });
+
+  it("bỏ qua khác biệt dấu và hoa thường", () => {
+    expect(resolveDishVisual("CÁ KHO TỘ", "MON_MAN").slug).toBe("ca-kho-to");
+    expect(resolveDishVisual("ca kho to", "MON_MAN").slug).toBe("ca-kho-to");
+  });
+
+  it("khớp tên đúng thì không cần trùng vai trò", () => {
+    // Tầng 1 tin tên tuyệt đối; chỉ tầng khớp chứa mới cần vai trò canh gác.
+    expect(resolveDishVisual("Cá kho tộ", "CANH_SUP").slug).toBe("ca-kho-to");
+  });
+});
+
+describe("khớp qua alias", () => {
+  it("alias trỏ đúng món", () => {
+    const v = resolveDishVisual("Cá kho", "MON_MAN");
+    expect(v.slug).toBe("ca-kho-to");
+    expect(v.imageUrl).toBe("/dishes/ca-kho-to.jpg");
+  });
+
+  it("alias của món chưa có ảnh vẫn khớp nhưng rơi về fallback ảnh", () => {
+    const v = resolveDishVisual("sườn heo xào chua ngọt", "MON_MAN");
+    expect(v.slug).toBe("suon-xao-chua-ngot");
+    expect(v.imageUrl).toBeNull();
+    expect(v.emoji).toBe(ROLE_VISUAL.MON_MAN.emoji);
+  });
+});
+
+describe("biến thể ngoặc đơn", () => {
+  // "Thịt kho tàu (thịt kho trứng)" chuẩn hoá thành chuỗi dính
+  // "thit kho tau thit kho trung" -> không tách ngoặc thì món phổ biến nhất
+  // trong catalog, lại đang CÓ ảnh, sẽ trượt sạch cả ba tầng.
+  it("khớp phần ngoài ngoặc", () => {
+    const v = resolveDishVisual("Thịt kho tàu", "MON_MAN");
+    expect(v.slug).toBe("thit-kho-tau");
+    expect(v.imageUrl).toBe("/dishes/thit-kho-tau.jpg");
+  });
+
+  it("khớp phần trong ngoặc", () => {
+    expect(resolveDishVisual("Chả giò", "MON_CUON").slug).toBe("nem-ran");
+    expect(resolveDishVisual("Nem rán", "MON_CUON").slug).toBe("nem-ran");
+  });
+
+  it("vẫn khớp cả tên gốc đầy đủ", () => {
+    expect(resolveDishVisual("Nem rán (chả giò)", "MON_CUON").slug).toBe(
+      "nem-ran",
+    );
+  });
+});
+
+describe("bất biến toàn catalog", () => {
+  it("mọi món có ảnh đều có ghi công", async () => {
+    const { allDishes } = await import("@/data/catalog");
+    for (const d of allDishes) {
+      if (d.imageUrl) expect(d.imageCredit, `món ${d.slug}`).toBeTruthy();
+    }
+  });
+});
