@@ -83,6 +83,16 @@ export interface MenuContext {
   // Kho là danh sách trắng (AVAILABLE_ONLY) hay chỉ gợi ý ưu tiên (FLEXIBLE).
   pantryMode: "AVAILABLE_ONLY" | "FLEXIBLE";
   retryNote?: string; // câu nhắc khi sinh lại do vi phạm kho
+  /**
+   * Khung cả khoảng ngày ở dạng gọn, để lời gọi NỞ của một ngày vẫn biết các
+   * ngày khác ăn gì mà không lặp nguyên liệu chính. null/undefined = luồng một
+   * ngày, prompt không đổi gì.
+   *
+   * Dùng trường RIÊNG chứ không mượn retryNote: retryNote mang nghĩa "lần trước
+   * sai, sửa đi" và prompt đặt nó ở vị trí sửa lỗi — nhồi khung tuần vào đó sẽ
+   * khiến mọi lời gọi nở trông như một lần sinh lại sau lỗi.
+   */
+  planContext?: string | null;
 }
 
 /** Ngữ cảnh cho một lần SỬA mâm (per-món hoặc cả mâm). */
