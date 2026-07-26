@@ -79,12 +79,45 @@ export function resolveDishVisual(name: string, dishRole: string): DishVisual;
 Dựng từ `allDishes` (`@/data/catalog`), khoá qua `normalizeIngredient` từ
 `@/lib/normalize`:
 
-- `byName: Map<string, CatalogDishData>` — từ `dish.name`.
+- `byName: Map<string, CatalogDishData>` — từ `dish.name` **cùng các biến thể
+  ngoặc đơn** (xem dưới).
 - `byAlias: Map<string, CatalogDishData>` — từ từng phần tử `dish.aliases`
   (trường đã có trong schema `types.ts:71` nhưng đang bỏ không). Alias trùng khoá
   với `byName` thì **bỏ qua**; alias trùng nhau thì món khai báo trước thắng.
 - `containKeys: {key, dish}[]` — mọi khoá của `byName` và `byAlias` có
-  **độ dài ≥ 8 ký tự**, sắp xếp giảm dần theo độ dài.
+  **độ dài ≥ 6 ký tự**, sắp xếp giảm dần theo độ dài.
+
+#### Biến thể ngoặc đơn (bắt buộc)
+
+`normalizeIngredient` biến dấu ngoặc thành khoảng trắng, nên tên có ngoặc bị
+dính thành một chuỗi vô dụng:
+
+```
+"Thịt kho tàu (thịt kho trứng)"  →  "thit kho tau thit kho trung"
+"Nem rán (chả giò)"              →  "nem ran cha gio"
+```
+
+Hậu quả nếu không xử lý: AI trả `"Thịt kho tàu"` sẽ **trượt hoàn toàn** — không
+khớp tên (chuỗi khác nhau), không khớp alias, không khớp chứa (khoá catalog dài
+hơn tên AI nên phép chứa ngược chiều). Đây là món phổ biến bậc nhất **và đang có
+ảnh**, trượt nó thì tính năng coi như hỏng.
+
+Nên khi dựng chỉ mục, mỗi món nạp thêm 2 loại khoá tách từ tên gốc **trước khi**
+chuẩn hoá:
+
+- phần ngoài ngoặc: `name.replace(/\([^)]*\)/g, " ")` → `"thit kho tau"`
+- từng phần trong ngoặc: `"thit kho trung"`, `"cha gio"`
+
+Hiện catalog có đúng 2 món dạng này (`thit-kho-tau`, `nem-ran`), nhưng luật phải
+nằm trong code chứ không sửa tay dữ liệu — món thêm sau vẫn đúng.
+
+#### Ngưỡng độ dài khoá
+
+Ngưỡng là **6 ký tự** (đã chuẩn hoá), không phải 8. Tên món ngắn nhất trong
+catalog là `"pho bo"` và `"com ga"` (6); để ngưỡng 8 thì phở bò, bún chả, xôi
+xéo, cháo gà, cơm gà **mất hẳn** khả năng khớp chứa, tức `"Phở bò tái nạm"` do AI
+sinh sẽ không có ảnh. Ở mức 6, hai chốt chặn còn lại (biên từ + trùng vai trò) đã
+đủ chặn khớp bừa.
 
 ### Thứ tự khớp
 
@@ -98,8 +131,9 @@ Dừng ở tầng đầu tiên trúng:
    - `dish.dishRole === dishRole`
 4. Trượt cả ba → fallback
 
-Ví dụ: `"Thịt kho tàu kiểu miền Nam"` + `MON_MAN` → tầng 3 trúng `thit-kho-tau`.
-`"Canh cá"` + `CANH_SUP` → trượt (khoá `"canh ca"` chỉ 7 ký tự, dưới ngưỡng).
+Ví dụ: `"Thịt kho tàu kiểu miền Nam"` + `MON_MAN` → tầng 3 trúng `thit-kho-tau`
+qua khoá biến thể `"thit kho tau"`. `"Cá kho"` + `MON_MAN` → tầng 2 trúng
+`ca-kho-to` qua alias. `"Cá"` + `MON_MAN` → trượt (`"ca"` dưới ngưỡng 6).
 
 ### Kết quả
 
@@ -243,7 +277,9 @@ lỗi lúc build) giữ nguyên — nó là thứ bắt lỗi ghi công thiếu.
 | Khớp qua `aliases` | trả đúng slug |
 | Tên AI dài chứa trọn tên catalog, đúng vai trò | tầng 3 trúng |
 | Tên AI chứa tên catalog nhưng **sai vai trò** | **trượt** → fallback |
-| Khoá catalog < 8 ký tự | **không** vào `containKeys`, trượt |
+| `"Thịt kho tàu"` (tên catalog có ngoặc đơn) | khớp `thit-kho-tau`, có ảnh |
+| `"Nem rán"` và `"Chả giò"` | cùng khớp `nem-ran` |
+| Khoá catalog < 6 ký tự | **không** vào `containKeys`, trượt |
 | Khớp giữa từ (vd `"ga"` trong `"gao"`) | **trượt** (đệm khoảng trắng) |
 | Món khớp nhưng chưa có ảnh | fallback, `slug` vẫn điền |
 | Món hoàn toàn lạ | fallback, `slug = null` |
@@ -257,9 +293,16 @@ riêng: ưu tiên vai trò, ưu tiên món có ảnh, ngoại lệ nhóm đáy, 
 
 ## Ràng buộc & lưu ý kỹ thuật
 
-- **Next.js 16.2.9 (breaking):** theo `AGENTS.md`, phải đọc
-  `node_modules/next/dist/docs/` trước khi code — nhất là phần `next/image`
-  (thuộc tính `fill`, `sizes`) vì API có thể khác bản trong trí nhớ.
+- **Next.js 16.2.9 (breaking):** đã đọc
+  `node_modules/next/dist/docs/01-app/03-api-reference/02-components/image.md`.
+  Ghi nhận:
+  - `priority` **đã deprecated từ Next 16**, thay bằng `preload`; nhưng tài liệu
+    khuyên "in most cases, you should use `loading="eager"` or
+    `fetchPriority="high"` instead of `preload`" → ảnh hero dùng
+    `loading="eager"`, **không** dùng `priority`.
+  - `fill` yêu cầu phần tử cha có `position: relative | fixed | absolute`.
+  - Prop `objectFit` đã bị bỏ từ v13 → dùng `className="object-cover"`, đúng như
+    `CatalogBrowser.tsx:114` đang làm.
 - `DishPhoto` và `DishInfo` **không** được đặt `"use client"` — chúng phải chạy
   được ở cả history (server) lẫn MealCard (client).
 - Không migration, không đụng `prisma/schema.prisma`, không đụng
