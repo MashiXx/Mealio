@@ -250,6 +250,25 @@ mâm — an toàn.
 - Hợp lệ 1..7; ngoài khoảng → lỗi `"Số ngày phải từ 1 đến 7."`
 - Chốt `AVAILABLE_ONLY` + kho rỗng giữ nguyên.
 - Chốt "đang có job chạy" giữ nguyên.
+- **Mới: `AVAILABLE_ONLY` chỉ cho `days = 1`.**
+
+### Vì sao "Nấu bằng đồ có sẵn" bị giới hạn 1 ngày
+
+Hai lý do, một sản phẩm một kỹ thuật.
+
+Về sản phẩm: nấu bảy ngày liên tiếp thuần bằng kho hiện có là yêu cầu không có
+lời giải — kho cạn sau một hai bữa. Cho chọn rồi trả về mâm hụt món suốt năm ngày
+cuối là hứa điều làm không được.
+
+Về kỹ thuật: nhánh `AVAILABLE_ONLY` hiện verify kết quả `generateMenu` bằng
+`verifyMenuAgainstPantry` (`src/lib/jobs.ts:215`). Ở luồng hai pha, `generateMenu`
+chỉ còn nở phần món **không** khớp catalog, nên verify tại đó là soi nhầm đối
+tượng; mà bỏ hẳn verify thì chế độ này mất chốt kiểm — hồi quy chức năng. Giới
+hạn 1 ngày khiến hai chế độ không bao giờ gặp nhau: `days = 1` đi **nguyên** đường
+cũ (giữ cả verify kho), `days > 1` luôn là `FLEXIBLE` và đi đường hai pha.
+
+Đây cũng chính là cách bảo đảm tiêu chí "chọn 1 ngày → hành vi y hệt hiện tại":
+không phải tin vào suy luận, mà vì đường cũ không bị đụng tới một dòng nào.
 
 `NewMenuForm` thêm một nhóm nút chọn nhanh **1 ngày · 3 ngày · 5 ngày · 7 ngày**
 cạnh ô ngày, kèm dòng nhắc khoảng ngày sẽ sinh ("12/07 → 18/07").
