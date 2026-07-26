@@ -63,9 +63,11 @@ describe("khớp qua alias", () => {
     expect(v.imageUrl).toBe("/dishes/ca-kho-to.jpg");
   });
 
+  // Fixture phải là món CHƯA có ảnh. Nếu sau này ghim được ảnh cho ga-kho-gung
+  // thì đổi sang một slug khác còn trống trong image-credits.json.
   it("alias của món chưa có ảnh vẫn khớp nhưng rơi về fallback ảnh", () => {
-    const v = resolveDishVisual("sườn heo xào chua ngọt", "MON_MAN");
-    expect(v.slug).toBe("suon-xao-chua-ngot");
+    const v = resolveDishVisual("thịt gà kho gừng", "MON_MAN");
+    expect(v.slug).toBe("ga-kho-gung");
     expect(v.imageUrl).toBeNull();
     expect(v.emoji).toBe(ROLE_VISUAL.MON_MAN.emoji);
   });

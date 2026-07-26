@@ -10,6 +10,11 @@ MANIFEST_PATH = os.path.join(ROOT, "src", "data", "catalog", "image-credits.json
 OPEN = ("cc0", "cc by", "cc-by", "public domain", "pdm")
 
 # slug -> tên File chính xác trên Commons (đã xác minh đúng món).
+#
+# Chỉ ghim file nào NHÌN RA đúng món. Tìm tự động bằng fetch_dish_images.py rất
+# hay trúng ảnh sai: dò "Cá chiên sả" ra bản đồ sao Canis Major, "Su su xào" ra
+# con trâu, "Lẩu nấm chay" ra ca sĩ Lưu Đức Hoa. Ảnh sai món tệ hơn nhiều so với
+# nền gradient sạch sẽ, nên thà bỏ trống.
 PINS = {
     "chao-ga": "File:Cháo gà nhà làm, tháng 5 năm 2020 (1).jpg",
     "che-chuoi": "File:Chè chuối 20201125.jpg",
@@ -18,7 +23,24 @@ PINS = {
     "lau-thai-hai-san": "File:Lẩu hải sản tại Aellmall năm 2016 (4).jpg",
     "ga-chien-nuoc-mam": "File:Cánh gà chiên nước mắm, tháng 8 năm 2018 (1).JPG",
     "trai-cay-theo-mua": "File:Tropical Fruit Platter.JPG",
+    # --- đợt 2 (2026-07-26): đã soi từng ảnh trong kết quả probe_images.py ---
+    "suon-xao-chua-ngot": "File:Suon xao chua ngot bac ninh.jpg",
+    "thit-rang-chay-canh": "File:Thit rang chay canh.jpg",
+    "muc-xao-dua-can": "File:Món mực xào, tháng 4 năm 2018 (1).jpg",
+    "dau-cove-xao-thit": "File:Món ăn cúng mồng 2 Tết 2022 (đậu cô ve xào cà rốt) (1).jpg",
+    "nam-dui-ga-xao": "File:Món ăn cúng đưa, Tết 2022 (món nấm xào chay) (1).jpg",
+    "canh-khoai-mo": "File:Canh Khoai Mỡ.jpg",
+    "canh-mang-suon": "File:Canh măng hầm thịt heo.jpg",
+    "rau-cau-dua": "File:Rau câu dừa tươi ở BiC Phú Thạnh tháng 10 năm 2018 (1).jpg",
 }
+
+# Đã tải về rồi LOẠI sau khi xem tận mắt — giữ lại đây để lần sau không ghim lại:
+#   suon-nuong-mat-ong  File:Sườn nướng.jpg
+#       -> bếp nướng vỉa hè, trong khung có xe máy và chân người, không ra món ăn.
+#   rau-cai-luoc        File:Tết 2020, Luộc rau ở nhà mình, ng3th2n2020 (1).jpg
+#       -> rau mồng tơi SỐNG đang bỏ vào nồi, không phải đĩa rau đã luộc.
+#   canh-mong-toi-ngao  File:Món cúng Tết năm 2019 tại Đông Hà (canh cá dìa...) (1).jpg
+#       -> nguyên con cá còn đầu, mà món này là canh NGAO, sai đạm.
 
 def api(params):
     q = urllib.parse.urlencode(params)
