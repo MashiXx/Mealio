@@ -1,7 +1,7 @@
 import { prisma } from "./db";
 import { buildCatalogReference } from "./catalog";
 import { createRecipeFromDish } from "./edit";
-import { planMealStructure } from "./meal-structure";
+import { planMealStructure, fitDishesToPlan } from "./meal-structure";
 import { toPantrySet, kindLookupFrom, staticKind, isExpiringSoon, matchKey } from "./pantry";
 import type { AiMenu } from "./ai/schema";
 import type {
@@ -106,6 +106,10 @@ export async function buildMenuContext(
  * theo số người hiện tại sẽ báo nhầm mâm 2 món do chính họ chọn là "thiếu món".
  * Bữa AI trả về ngoài danh sách đã yêu cầu thì `dishCount` để null — thà không
  * cảnh báo còn hơn cảnh báo theo một con số bịa.
+ *
+ * Đây cũng là CHỐT CHẶN cuối về cơ cấu mâm: mọi đường sinh (một ngày lẫn nở
+ * ngày) đều đi qua đây, nên fitDishesToPlan đặt ở đây là siết được cả hai bằng
+ * một chỗ. Không siết thì nhà chọn 3 món vẫn nhận mâm 4 món khi AI trả dôi.
  */
 export async function saveMenu(
   familyId: string,
@@ -115,8 +119,8 @@ export async function saveMenu(
   // nên luồng một ngày không đổi gì.
   mealPlanId: string | null = null,
 ): Promise<string[]> {
-  const plannedCountOf = new Map(
-    slots.map((s) => [`${s.date}|${s.mealType}`, s.dishRoles.length]),
+  const rolesOf = new Map(
+    slots.map((s) => [`${s.date}|${s.mealType}`, s.dishRoles]),
   );
 
   // Transaction ghi nhiều lượt tuần tự (upsert nguyên liệu + tạo recipe/plannedMeal)
@@ -127,6 +131,14 @@ export async function saveMenu(
 
     for (const meal of menu.meals) {
       const mealDate = new Date(`${meal.date}T00:00:00`);
+
+      // Tra bằng chuỗi ngày THÔ của AI (`meal.date`) chứ không qua mealDate:
+      // slot cũng mang chuỗi yyyy-mm-dd, so trực tiếp thì không phải lo lệch
+      // múi giờ khi Date quay ngược lại thành chuỗi.
+      const roles = rolesOf.get(`${meal.date}|${meal.mealType}`) ?? [];
+      // Siết về đúng khung TRƯỚC khi ghi: món dôi ra bị bỏ ngay tại đây, không
+      // tạo Recipe lẫn MealDish cho nó.
+      const dishes = fitDishesToPlan(meal.dishes, roles);
 
       // latest-wins: xoá mâm cũ của đúng (ngày, bữa) trước khi tạo mới.
       await tx.plannedMeal.deleteMany({
@@ -139,16 +151,13 @@ export async function saveMenu(
           mealPlanId,
           date: mealDate,
           mealType: meal.mealType,
-          servings: meal.dishes[0]?.servings ?? 4,
-          // Tra bằng chuỗi ngày THÔ của AI (`meal.date`) chứ không qua mealDate:
-          // slot cũng mang chuỗi yyyy-mm-dd, so trực tiếp thì không phải lo lệch
-          // múi giờ khi Date quay ngược lại thành chuỗi.
-          dishCount: plannedCountOf.get(`${meal.date}|${meal.mealType}`) ?? null,
+          servings: dishes[0]?.servings ?? 4,
+          dishCount: roles.length > 0 ? roles.length : null,
         },
       });
 
       let position = 0;
-      for (const dish of meal.dishes) {
+      for (const dish of dishes) {
         const recipeId = await createRecipeFromDish(tx, familyId, dish);
 
         await tx.mealDish.create({

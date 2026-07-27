@@ -54,3 +54,49 @@ export function planMealStructure(
   const count = valid ? (override as number) : autoCount(familySize);
   return mainMealRoles(count);
 }
+
+/**
+ * Ép danh sách món AI trả về khớp KHUNG đã yêu cầu. Trả về tối đa `roles.length`
+ * món, xếp theo đúng thứ tự vai trò của khung.
+ *
+ * Vì sao cần: prompt đã ghi rõ số món và vai trò, nhưng không tầng nào kiểm lại
+ * kết quả — schema chỉ đòi `dishes.min(1)`, verifyWeekPlan chỉ soi KHUNG của
+ * nhánh nhiều ngày và còn chấp nhận vi phạm sau một lần sinh lại, còn saveMenu
+ * thì ghi hết. Nhà chọn 3 món mà AI trả 4 là mâm lưu đủ 4. Cùng một lập luận đã
+ * dùng cho verifyWeekPlan và verifyMenuAgainstPantry: model hay phớt lờ luật,
+ * nên code phải chốt lại.
+ *
+ * Khớp theo VAI TRÒ trước rồi mới lấp chỗ trống bằng món còn thừa, chứ không cắt
+ * thẳng `slice(0, n)`: AI trả hai món mặn và thiếu món xào thì cắt thẳng sẽ giữ
+ * cả hai món mặn rồi vứt mất món canh. Lấp bù để mâm thừa món không bị biến
+ * thành mâm HỤT món — trả về ít hơn khung chỉ khi AI thật sự đưa thiếu, và ca đó
+ * đã có cảnh báo "x/y món so với kế hoạch" ở bảng chính lo.
+ *
+ * `roles` rỗng = bữa nằm ngoài danh sách đã yêu cầu, không có căn cứ để siết nên
+ * giữ nguyên — cùng lập luận với `dishCount = null` trong saveMenu.
+ */
+export function fitDishesToPlan<T extends { dishRole: DishRoleStr }>(
+  dishes: T[],
+  roles: DishRoleStr[],
+): T[] {
+  if (roles.length === 0) return dishes;
+
+  const used = new Set<number>();
+  const out: T[] = [];
+
+  for (const role of roles) {
+    const i = dishes.findIndex(
+      (d, idx) => !used.has(idx) && d.dishRole === role,
+    );
+    if (i === -1) continue;
+    used.add(i);
+    out.push(dishes[i]);
+  }
+
+  for (let i = 0; i < dishes.length && out.length < roles.length; i++) {
+    if (used.has(i)) continue;
+    out.push(dishes[i]);
+  }
+
+  return out;
+}
