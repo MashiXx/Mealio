@@ -6,26 +6,80 @@ import {
   removeShoppingItemAction,
   closeShoppingListAction,
 } from "@/lib/actions/shopping";
+import { BATCH_DAYS } from "@/lib/shopping";
+import {
+  ingredientGroup,
+  GROUP_ORDER,
+  GROUP_LABEL,
+  type IngredientGroup,
+} from "@/lib/ingredient-group";
 
-// Trang đi chợ: danh sách phẳng của DUY NHẤT danh sách đang mở (closedAt = null).
+// Trang đi chợ của DUY NHẤT danh sách đang mở (closedAt = null), xếp theo ĐỢT
+// mua (hai ngày một đợt) rồi theo quầy trong từng đợt.
 // Server component thuần — mọi thao tác đi qua form + server action.
+
+/** dd/MM theo giờ địa phương. */
+function dayMonth(d: Date): string {
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/**
+ * Nhãn của một đợt. Khoảng ngày suy từ mâm sớm nhất còn phải nấu — đúng cái mốc
+ * mà syncShopping dùng để đánh batchIndex. Không có mâm nào (mọi thứ đã nấu, chỉ
+ * còn dòng tự gõ) thì bỏ phần ngày đi thay vì bịa một khoảng sai.
+ */
+function batchLabel(index: number, earliest: Date | null): string {
+  const stt = `Đợt ${index + 1}`;
+  if (!earliest) return stt;
+  const start = new Date(earliest);
+  start.setDate(start.getDate() + index * BATCH_DAYS);
+  const end = new Date(start);
+  end.setDate(end.getDate() + BATCH_DAYS - 1);
+  return `${stt} · ${dayMonth(start)}–${dayMonth(end)}`;
+}
 
 export default async function ShoppingPage() {
   const { familyId } = await requireFamily();
 
-  const list = await prisma.shoppingList.findFirst({
-    where: { familyId, closedAt: null },
-    orderBy: { createdAt: "desc" },
-    include: {
-      items: {
-        include: { ingredient: true },
-        // Chưa mua nổi lên trên; đã mua trôi xuống nhưng vẫn hiện để bỏ tick được.
-        orderBy: { purchased: "asc" },
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const [list, firstMeal] = await Promise.all([
+    prisma.shoppingList.findFirst({
+      where: { familyId, closedAt: null },
+      orderBy: { createdAt: "desc" },
+      include: {
+        items: {
+          include: { ingredient: true },
+          // Chưa mua nổi lên trên; đã mua trôi xuống nhưng vẫn hiện để bỏ tick được.
+          orderBy: { purchased: "asc" },
+        },
       },
-    },
-  });
+    }),
+    // Cùng bộ lọc với syncShopping (từ đầu hôm nay, chưa nấu) để mốc tính ngày
+    // của hai bên không lệch.
+    prisma.plannedMeal.findFirst({
+      where: { familyId, date: { gte: startOfToday }, cookedAt: null },
+      orderBy: { date: "asc" },
+      select: { date: true },
+    }),
+  ]);
 
   const items = list?.items ?? [];
+  const earliest = firstMeal?.date ?? null;
+
+  // Gom hai tầng: đợt -> quầy. Giữ nguyên thứ tự đã sắp từ truy vấn (chưa mua
+  // lên trước) vì Map và mảng đều bảo toàn thứ tự chèn.
+  const byBatch = new Map<number, Map<IngredientGroup, typeof items>>();
+  for (const it of items) {
+    const b = it.batchIndex;
+    const g = ingredientGroup(it.ingredient.name);
+    if (!byBatch.has(b)) byBatch.set(b, new Map());
+    const groups = byBatch.get(b)!;
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g)!.push(it);
+  }
+  const batches = [...byBatch.keys()].sort((a, b) => a - b);
 
   return (
     <div className="space-y-6">
@@ -84,8 +138,25 @@ export default async function ShoppingPage() {
           </p>
         </div>
       ) : (
-        <ul className="divide-y divide-zinc-100 rounded-2xl border border-zinc-200 bg-white">
-          {items.map((it) => (
+        <div className="space-y-5">
+          {batches.map((b) => (
+            <section
+              key={b}
+              className="overflow-hidden rounded-2xl border border-zinc-200 bg-white"
+            >
+              <h2 className="border-b border-zinc-100 px-5 py-3 text-sm font-semibold text-zinc-700">
+                {batchLabel(b, earliest)}
+              </h2>
+              {GROUP_ORDER.filter((g) => byBatch.get(b)!.has(g)).map((g) => (
+                <div key={g}>
+                  <p className="bg-zinc-50 px-5 py-1.5 text-xs font-medium text-zinc-500">
+                    {GROUP_LABEL[g]}
+                  </p>
+                  <ul className="divide-y divide-zinc-100">
+                    {byBatch
+                      .get(b)!
+                      .get(g)!
+                      .map((it) => (
             <li key={it.id} className="flex items-center gap-3 px-5 py-3">
               <form action={togglePurchasedAction}>
                 <input type="hidden" name="id" value={it.id} />
@@ -130,8 +201,13 @@ export default async function ShoppingPage() {
                 </form>
               )}
             </li>
+                      ))}
+                  </ul>
+                </div>
+              ))}
+            </section>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

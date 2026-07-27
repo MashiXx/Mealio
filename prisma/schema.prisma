@@ -389,6 +389,9 @@ model ShoppingItem {
   quantity  Float   @default(1)
   unit      String  @default("phần")
   purchased Boolean @default(false)
+  // Đợt đi chợ: 0 = đợt đầu (hai ngày gần nhất), 1 = đợt kế... Dòng người dùng
+  // tự gõ luôn ở đợt 0 vì nó không thuộc mâm nào.
+  batchIndex Int    @default(0)
   // true = người dùng tự gõ thêm; syncShopping KHÔNG được xoá hay cộng dồn vào.
   // Dòng máy sinh (false) bị DỰNG LẠI mỗi lần đồng bộ, nên nếu sync cộng dồn vào
   // một dòng manual thì con số người dùng gõ sẽ phình lên sau mỗi lần sinh lại
