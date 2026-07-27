@@ -79,6 +79,14 @@ function membersBlock(members: MenuContext["members"]): string {
  * chảo" rồi đốt một vòng sinh lại cho thứ không sai hẳn — cùng lập luận đã dùng
  * để tha vai trò DO_CHUA khỏi R3.
  */
+/**
+ * Luật cho trường prepAheadNote. Tách riêng vì hai prompt CÓ công thức
+ * (sinh mâm, sửa mâm) đều cần, còn prompt khung nhiều ngày thì không — khung chỉ
+ * có tên món, chưa tới lúc bàn chuyện sơ chế.
+ */
+const PREP_AHEAD_RULE =
+  "- prepAheadNote: MỘT câu ngắn nói việc có thể làm trước để tối về nấu nhanh (vd \"chiều ướp sẵn thịt, tối chỉ việc kho\"). Món không có gì làm trước được thì để chuỗi rỗng, ĐỪNG bịa.";
+
 const HEALTHY_RULES = [
   "QUY TẮC HEALTHY (bắt buộc):",
   "- Ưu tiên các cách chế biến: HẤP, LUỘC, ÁP CHẢO, KHO ÍT DẦU, NƯỚNG.",
@@ -168,9 +176,10 @@ export function buildMenuPrompt(ctx: MenuContext): {
     "- Nếu có 'Món Việt tham khảo', ưu tiên chọn/biến tấu từ đó cho quen thuộc, đúng ẩm thực Việt.",
     "- Mỗi bữa phải trả ĐÚNG SỐ MÓN và ĐÚNG VAI TRÒ được yêu cầu bên dưới.",
     "- Tên món và công thức viết bằng tiếng Việt.",
+    PREP_AHEAD_RULE,
     "CHỈ trả về JSON đúng cấu trúc, KHÔNG kèm giải thích, KHÔNG markdown.",
     "Cấu trúc JSON:",
-    `{"meals":[{"date":"yyyy-mm-dd","mealType":"BREAKFAST|LUNCH|DINNER","dishes":[{"name":"string","dishRole":"MON_MAN|MON_XAO|CANH_SUP|RAU_LUOC|LAU|COM_BUN_PHO|MON_CUON|TRANG_MIENG|DO_CHUA","servings":number,"cookMinutes":number,"steps":["string"],"nutritionLabels":["string"],"ingredients":[{"name":"string","quantity":number,"unit":"string"}]}]}]}`,
+    `{"meals":[{"date":"yyyy-mm-dd","mealType":"BREAKFAST|LUNCH|DINNER","dishes":[{"name":"string","dishRole":"MON_MAN|MON_XAO|CANH_SUP|RAU_LUOC|LAU|COM_BUN_PHO|MON_CUON|TRANG_MIENG|DO_CHUA","servings":number,"cookMinutes":number,"steps":["string"],"nutritionLabels":["string"],"prepAheadNote":"string","ingredients":[{"name":"string","quantity":number,"unit":"string"}]}]}]}`,
     'Ví dụ nhãn dinh dưỡng: "nhiều rau", "ít dầu mỡ", "thanh đạm", "giàu đạm", "ít tinh bột".',
   ].join("\n");
 
@@ -418,9 +427,10 @@ export function buildEditPrompt(ctx: EditContext): {
     "- TUYỆT ĐỐI không dùng nguyên liệu gây dị ứng; tôn trọng kiêng khem.",
     "- Không lặp lại món đã ăn gần đây; tránh trùng nguyên liệu chính với các món còn lại trong mâm.",
     "- Gắn nhãn dinh dưỡng cho từng món; công thức bằng tiếng Việt.",
+    PREP_AHEAD_RULE,
     `- ${scopeRule}`,
     "CHỈ trả về JSON, KHÔNG giải thích, KHÔNG markdown.",
-    `Cấu trúc JSON: {"dishes":[{"name":"string","dishRole":"MON_MAN|MON_XAO|CANH_SUP|RAU_LUOC|LAU|COM_BUN_PHO|MON_CUON|TRANG_MIENG|DO_CHUA","servings":number,"cookMinutes":number,"steps":["string"],"nutritionLabels":["string"],"ingredients":[{"name":"string","quantity":number,"unit":"string"}]}]}`,
+    `Cấu trúc JSON: {"dishes":[{"name":"string","dishRole":"MON_MAN|MON_XAO|CANH_SUP|RAU_LUOC|LAU|COM_BUN_PHO|MON_CUON|TRANG_MIENG|DO_CHUA","servings":number,"cookMinutes":number,"steps":["string"],"nutritionLabels":["string"],"prepAheadNote":"string","ingredients":[{"name":"string","quantity":number,"unit":"string"}]}]}`,
   ].join("\n");
 
   const p = ctx.profile;

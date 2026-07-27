@@ -59,6 +59,9 @@ export async function createRecipeFromDish(
       cookMinutes: dish.cookMinutes,
       steps: dish.steps,
       nutritionLabels: dish.nutritionLabels,
+      // Chuỗi rỗng vào DB thành null: giao diện chỉ cần kiểm một thứ (null) để
+      // quyết ẩn dòng ghi chú, thay vì vừa kiểm null vừa kiểm "".
+      prepAheadNote: dish.prepAheadNote.trim() || null,
       ingredients: { create: recipeIngredients },
     },
   });

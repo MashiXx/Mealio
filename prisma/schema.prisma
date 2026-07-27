@@ -233,6 +233,10 @@ model Recipe {
   cookMinutes     Int          @default(30)
   steps           String[]     @default([])
   nutritionLabels String[]     @default([]) // nhiều rau, ít dầu mỡ, thanh đạm...
+  // Việc làm trước được để tối về nấu nhanh ("chiều ướp sẵn thịt"). null = món
+  // cũ trước tính năng này, hoặc món lấy từ catalog (catalog chưa có dữ liệu
+  // này) -> giao diện ẩn hẳn dòng ghi chú thay vì hiện một dòng rỗng.
+  prepAheadNote   String?
   createdAt       DateTime     @default(now())
 
   ingredients RecipeIngredient[]

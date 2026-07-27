@@ -203,6 +203,7 @@ export default async function HistoryPage({
                                     `${ri.ingredient.name} (${ri.quantity} ${ri.unit})`,
                                 ),
                                 steps: dish.recipe.steps,
+                                prepAheadNote: dish.recipe.prepAheadNote,
                               }}
                             />
                             <DishPhotoCredit

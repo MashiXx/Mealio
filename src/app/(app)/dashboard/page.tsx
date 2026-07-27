@@ -288,6 +288,7 @@ export default async function DashboardPage({
                         (ri) => `${ri.ingredient.name} (${ri.quantity} ${ri.unit})`,
                       ),
                       steps: d.recipe.steps,
+                      prepAheadNote: d.recipe.prepAheadNote,
                       chatHistory: Array.isArray(d.chatHistory)
                         ? (d.chatHistory as MealView["chatHistory"])
                         : [],

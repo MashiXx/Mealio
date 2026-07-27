@@ -5,6 +5,8 @@ export type DishInfoData = {
   nutritionLabels: string[];
   ingredients: string[];
   steps: string[];
+  /** Việc làm trước cho đỡ mất thời gian lúc nấu. null = không có gì để làm trước. */
+  prepAheadNote: string | null;
 };
 
 /**
@@ -25,6 +27,12 @@ export function DishInfo({ dish }: { dish: DishInfoData }) {
         {dish.nutritionLabels.length > 0 &&
           " · " + dish.nutritionLabels.join(", ")}
       </p>
+      {dish.prepAheadNote && (
+        <p className="mt-2 rounded-lg bg-amber-50 px-2 py-1.5 text-sm text-amber-800">
+          <span className="font-medium">Chuẩn bị trước: </span>
+          {dish.prepAheadNote}
+        </p>
+      )}
       {dish.ingredients.length > 0 && (
         <p className="mt-2 text-sm text-zinc-600">
           <span className="font-medium">Nguyên liệu: </span>

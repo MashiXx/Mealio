@@ -26,6 +26,9 @@ export const aiDishSchema = z.object({
   cookMinutes: z.number().int().positive().default(30),
   steps: z.array(z.string()).default([]),
   nutritionLabels: z.array(z.string()).default([]),
+  // Việc làm trước cho đỡ mất thời gian lúc nấu. Có .default("") nên mọi đường
+  // gọi cũ (sửa mâm, món dựng từ catalog) không phải khai gì thêm.
+  prepAheadNote: z.string().default(""),
   ingredients: z.array(aiIngredientSchema).default([]),
 });
 
