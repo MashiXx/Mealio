@@ -1,7 +1,9 @@
 import { normalizeIngredient } from "./normalize";
 import { MEAL_TYPE_LABEL, DISH_ROLE_LABEL } from "./enums";
+import { deriveDietConstraints } from "./catalog";
+import { MAIN_PROTEINS, type MainProtein } from "./ai/schema";
 import type { AiWeekPlan } from "./ai/schema";
-import type { MenuSlot } from "./ai/types";
+import type { MenuSlot, MenuMember } from "./ai/types";
 
 // Kiểm khung thực đơn nhiều ngày do AI trả về. Thuần, không chạm DB.
 //
@@ -16,6 +18,48 @@ function dayNumber(ymd: string): number {
 }
 
 const keyOf = (date: string, mealType: string) => `${date}|${mealType}`;
+
+/** Tag catalog bị loại -> đạm chính không dùng được nữa. */
+const TAG_TO_PROTEIN: Record<string, MainProtein> = {
+  "chua-heo": "THIT_HEO",
+  "chua-bo": "THIT_BO",
+  "chua-ga": "THIT_GA",
+  "chua-ca": "CA",
+  "chua-hai-san": "TOM_CUA",
+  "chua-trung": "TRUNG",
+  "chua-dau-nanh": "DAU_PHU",
+};
+
+/** Đạm chính nhà ăn chay không dùng được. */
+const MEAT_PROTEINS: MainProtein[] = [
+  "THIT_HEO",
+  "THIT_BO",
+  "THIT_GA",
+  "CA",
+  "TOM_CUA",
+];
+
+/**
+ * Các đạm chính gia đình này thật sự dùng được, sau khi trừ dị ứng và kiêng khem.
+ *
+ * Đi qua đúng `deriveDietConstraints` mà catalog đang dùng, để một nguồn sự thật
+ * duy nhất quyết định "nhà này kiêng gì" — nếu tự đọc `allergies` ở đây thì bảng
+ * từ khoá sẽ trôi lệch khỏi bảng của catalog.
+ *
+ * KHÔNG bao giờ rỗng: RAU_CU không khớp tag loại trừ nào nên luôn còn lại.
+ */
+export function allowedProteins(members: MenuMember[]): MainProtein[] {
+  const { excludeTags, vegetarianOnly } = deriveDietConstraints(members);
+  const banned = new Set<MainProtein>();
+  for (const tag of excludeTags) {
+    const p = TAG_TO_PROTEIN[tag];
+    if (p) banned.add(p);
+  }
+  if (vegetarianOnly) for (const p of MEAT_PROTEINS) banned.add(p);
+
+  const left = MAIN_PROTEINS.filter((p) => !banned.has(p));
+  return left.length > 0 ? [...left] : ["RAU_CU"];
+}
 
 const roleText = (roles: string[]) =>
   roles.map((r) => DISH_ROLE_LABEL[r] ?? r).join(", ");
@@ -34,8 +78,16 @@ const mealText = (date: string, mealType: string) =>
  * - R4: món mặn hai ngày LIỀN NHAU không cùng đạm chính. Không cấm trùng toàn
  *   khoảng: 7 ngày mà cấm tuyệt đối thì cần 7 loại đạm trong khi enum có 8, và
  *   nhà ăn chay sẽ không có lời giải nào.
+ * - R5: một đạm chính không dùng quá `cap` lần trong cả khoảng. `cap` CO GIÃN
+ *   theo số đạm nhà này còn dùng được chứ không cứng bằng 2 — xem bên dưới.
+ *
+ * `members` để trống = không biết kiêng khem, coi như dùng được cả 8 đạm.
  */
-export function verifyWeekPlan(plan: AiWeekPlan, slots: MenuSlot[]): string[] {
+export function verifyWeekPlan(
+  plan: AiWeekPlan,
+  slots: MenuSlot[],
+  members: MenuMember[] = [],
+): string[] {
   const violations: string[] = [];
 
   const bySlot = new Map(slots.map((s) => [keyOf(s.date, s.mealType), s]));
@@ -107,6 +159,38 @@ export function verifyWeekPlan(plan: AiWeekPlan, slots: MenuSlot[]): string[] {
     if (dup.length > 0) {
       violations.push(
         `Đạm chính (${dup.join(", ")}) lặp ở hai ngày liền ${prev} và ${cur}.`,
+      );
+    }
+  }
+
+  // R5 — trần lặp đạm cho CẢ khoảng. Đếm lại từ đầu chứ không dùng
+  // proteinsByDate: map đó gom theo Set nên hai món mặn cùng đạm trong một ngày
+  // chỉ tính một lần, đúng cho R4 nhưng sai cho một cái trần đếm số lần.
+  //
+  // Ngưỡng CO GIÃN theo số đạm nhà này còn dùng được: không kiêng gì thì có 8
+  // đạm nên trần đúng bằng 2 như task.txt yêu cầu; nhà ăn chay chỉ còn 3 đạm,
+  // ép cứng 2 thì 7 bữa không có lời giải nào và job sẽ đốt một vòng sinh lại
+  // rồi vẫn phải nhận khung vi phạm — đúng cái bẫy R4 đã ghi chú.
+  const mainDishes = plan.meals.flatMap((m) =>
+    m.dishes.filter((d) => d.dishRole === "MON_MAN"),
+  );
+  const cap = Math.max(
+    2,
+    Math.ceil(mainDishes.length / allowedProteins(members).length),
+  );
+  const countByProtein = new Map<string, number>();
+  for (const d of mainDishes) {
+    countByProtein.set(
+      d.mainProtein,
+      (countByProtein.get(d.mainProtein) ?? 0) + 1,
+    );
+  }
+  // Duyệt theo thứ tự tên để thông báo tất định, cùng lý do với R3.
+  for (const p of [...countByProtein.keys()].sort()) {
+    const n = countByProtein.get(p)!;
+    if (n > cap) {
+      violations.push(
+        `Đạm chính ${p} dùng ${n} lần trong cả khoảng, quá mức cho phép (${cap} lần).`,
       );
     }
   }

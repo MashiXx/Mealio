@@ -275,7 +275,7 @@ async function runPlanJob(
 
   // Model hay phớt lờ luật cứng -> code kiểm lại. Chỉ sinh lại MỘT lần: vi phạm
   // hai lần thì nhận khung đó còn hơn bắt người dùng chờ thêm một vòng Ollama.
-  const violations = verifyWeekPlan(plan, ctx.slots);
+  const violations = verifyWeekPlan(plan, ctx.slots, ctx.members);
   if (violations.length > 0) {
     plan = await provider.generateWeekPlan({
       ...ctx,

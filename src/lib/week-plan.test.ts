@@ -1,7 +1,34 @@
 import { describe, it, expect } from "vitest";
-import { verifyWeekPlan } from "./week-plan";
+import { verifyWeekPlan, allowedProteins } from "./week-plan";
 import type { AiWeekPlan } from "./ai/schema";
-import type { MenuSlot } from "./ai/types";
+import type { MenuSlot, MenuMember } from "./ai/types";
+
+const member = (over: Partial<MenuMember> = {}): MenuMember =>
+  ({
+    name: "A",
+    ageGroup: "ADULT",
+    allergies: [],
+    dietaryRestrictions: [],
+    likes: [],
+    dislikes: [],
+    ...over,
+  }) as MenuMember;
+
+/** 7 ngày liên tiếp từ 2026-07-27, mỗi ngày một bữa tối một món mặn. */
+const WEEK = [
+  "2026-07-27",
+  "2026-07-28",
+  "2026-07-29",
+  "2026-07-30",
+  "2026-07-31",
+  "2026-08-01",
+  "2026-08-02",
+];
+const weekSlots = () => WEEK.map((d) => slot(d, ["MON_MAN"]));
+const weekPlan = (proteins: string[]) =>
+  plan(
+    WEEK.map((d, i) => meal(d, [dish(`Món số ${i + 1}`, "MON_MAN", proteins[i])])),
+  );
 
 const slot = (date: string, roles: string[]): MenuSlot =>
   ({ date, mealType: "DINNER", dishRoles: roles }) as MenuSlot;
@@ -159,5 +186,97 @@ describe("verifyWeekPlan", () => {
     const slots = [slot("2026-07-27", ["MON_MAN"])];
     expect(() => verifyWeekPlan(plan([]), slots)).not.toThrow();
     expect(verifyWeekPlan(plan([]), slots).length).toBeGreaterThan(0);
+  });
+
+  // R5 — "không lặp nguyên liệu chính quá 2 lần/tuần" của task.txt.
+  it("R5: một đạm dùng 3 lần trong tuần là vi phạm", () => {
+    const p = weekPlan([
+      "CA",
+      "THIT_HEO",
+      "CA",
+      "THIT_GA",
+      "CA",
+      "THIT_BO",
+      "DAU_PHU",
+    ]);
+    expect(
+      verifyWeekPlan(p, weekSlots()).some((x) => x.includes("3 lần")),
+    ).toBe(true);
+  });
+
+  it("R5: đúng 2 lần thì không sao", () => {
+    const p = weekPlan([
+      "CA",
+      "THIT_HEO",
+      "CA",
+      "THIT_GA",
+      "TRUNG",
+      "THIT_BO",
+      "DAU_PHU",
+    ]);
+    expect(verifyWeekPlan(p, weekSlots())).toEqual([]);
+  });
+
+  // Chốt chặn quan trọng nhất của R5: nhà ăn chay chỉ còn 3 đạm, ép cứng ngưỡng
+  // 2 thì thực đơn 7 ngày KHÔNG có lời giải và job sinh lại một vòng vô ích.
+  it("R5: nhà ăn chay được nới ngưỡng theo số đạm còn lại", () => {
+    const chay = [member({ dietaryRestrictions: ["ăn chay"] })];
+    const p = weekPlan([
+      "DAU_PHU",
+      "TRUNG",
+      "DAU_PHU",
+      "TRUNG",
+      "DAU_PHU",
+      "RAU_CU",
+      "TRUNG",
+    ]);
+    expect(verifyWeekPlan(p, weekSlots(), chay)).toEqual([]);
+  });
+
+  it("R5: nhà ăn chay vượt cả ngưỡng đã nới thì vẫn vi phạm", () => {
+    const chay = [member({ dietaryRestrictions: ["ăn chay"] })];
+    const p = weekPlan([
+      "DAU_PHU",
+      "TRUNG",
+      "DAU_PHU",
+      "TRUNG",
+      "DAU_PHU",
+      "RAU_CU",
+      "DAU_PHU",
+    ]);
+    expect(
+      verifyWeekPlan(p, weekSlots(), chay).some((x) => x.includes("4 lần")),
+    ).toBe(true);
+  });
+});
+
+describe("allowedProteins", () => {
+  it("không kiêng gì thì được cả 8 loại", () => {
+    expect(allowedProteins([member()])).toHaveLength(8);
+  });
+
+  it("dị ứng hải sản và kiêng bò thì rụng đúng hai loại", () => {
+    const got = allowedProteins([
+      member({ allergies: ["hải sản"] }),
+      member({ dietaryRestrictions: ["không ăn thịt bò"] }),
+    ]);
+    expect(got).not.toContain("TOM_CUA");
+    expect(got).not.toContain("THIT_BO");
+    expect(got).toContain("CA");
+  });
+
+  it("ăn chay chỉ còn đạm thực vật và trứng", () => {
+    const got = allowedProteins([member({ dietaryRestrictions: ["ăn chay"] })]);
+    expect([...got].sort()).toEqual(["DAU_PHU", "RAU_CU", "TRUNG"]);
+  });
+
+  it("kiêng hết mọi thứ vẫn còn ít nhất một loại, không bao giờ rỗng", () => {
+    const got = allowedProteins([
+      member({
+        allergies: ["hải sản", "cá", "trứng", "đậu nành"],
+        dietaryRestrictions: ["ăn chay"],
+      }),
+    ]);
+    expect(got.length).toBeGreaterThan(0);
   });
 });

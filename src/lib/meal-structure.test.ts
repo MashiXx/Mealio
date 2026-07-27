@@ -24,12 +24,14 @@ describe("planMealStructure", () => {
     ]);
   });
 
-  it(">=5 người: 4 món", () => {
+  // task.txt: mâm 3-4 món = đạm + rau + canh (+ tráng miệng nếu có món thứ tư).
+  // Trước đây món thứ tư là rau luộc, tức mâm 4 món có tới hai món rau.
+  it(">=5 người: 4 món, món thứ tư là tráng miệng", () => {
     expect(planMealStructure("DINNER", 6)).toEqual([
       "MON_MAN",
       "MON_XAO",
-      "RAU_LUOC",
       "CANH_SUP",
+      "TRANG_MIENG",
     ]);
   });
 
