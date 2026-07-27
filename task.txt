@@ -1,0 +1,213 @@
+đây là prompt gemini
+
+Bạn là chuyên gia dinh dưỡng và đầu bếp gia đình Việt Nam.
+
+Hãy lập thực đơn BỮA TỐI cho 7 ngày dành cho gia đình 6 người gồm:
+- 2 ông bà (ưu tiên món mềm, ít dầu mỡ, dễ nhai, ít muối)
+- 2 bố mẹ
+- 2 bé trai 10 tuổi đang phát triển
+
+Yêu cầu:
+
+1. Thực đơn theo phong cách healthy, cân bằng dinh dưỡng.
+2. Mỗi bữa gồm 3-4 món:
+   - 1 món đạm (gà, bò, cá, tôm, thịt heo nạc, trứng...)
+   - 1 món rau
+   - 1 món canh
+   - Có thể thêm 1 món phụ hoặc tráng miệng nếu phù hợp.
+3. Ưu tiên món ăn Việt Nam.
+4. Không lặp lại nguyên liệu chính quá 2 lần/tuần.
+5. Hạn chế:
+   - Đồ chiên rán
+   - Thực phẩm chế biến sẵn
+   - Quá nhiều tinh bột
+   - Quá nhiều dầu mỡ
+6. Ưu tiên:
+   - Hấp
+   - Luộc
+   - Áp chảo
+   - Kho ít dầu
+   - Nướng
+7. Thời gian nấu mỗi bữa khoảng 30-45 phút.
+8. Chi phí hợp lý cho gia đình tại Việt Nam.
+9. Ghi chú nếu món nào có thể chuẩn bị trước để tiết kiệm thời gian.
+
+Sau đó hãy lập danh sách đi chợ theo từng đợt, mua 2 ngày một lần:
+
+- Đợt 1: Ngày 1-2
+- Đợt 2: Ngày 3-4
+- Đợt 3: Ngày 5-6
+- Đợt 4: Ngày 7
+
+Trong mỗi đợt, nhóm nguyên liệu theo:
+- Thịt/Cá/Hải sản
+- Rau củ
+- Trái cây
+- Gia vị
+- Khác
+
+Ước lượng số lượng cần mua (kg, g, bó, quả...) đủ cho 6 người, hạn chế dư thừa.
+
+Cuối cùng:
+- Tổng hợp các nguyên liệu được sử dụng nhiều trong tuần.
+- Đưa ra 5 mẹo meal prep giúp giảm thời gian nấu xuống còn khoảng 20-30 phút mỗi tối.
+- Trình bày kết quả dưới dạng bảng rõ ràng, dễ đọc.
+
+
+đây là kết quả
+
+## Thực Đơn Bữa Tối 7 Ngày Cho Gia Đình 6 Người
+
+---
+
+### Thứ Hai (Ngày 1)
+
+* **Món đạm:** Cá diêu hồng hấp xì dầu gừng hành (thịt cá mềm, dễ nhai cho ông bà, giàu omega-3 cho các bé).
+* **Món rau:** Bông cải xanh và cà rốt luộc chấm kho quẹt nhạt (hoặc muối mè).
+* **Món canh:** Canh sườn heo nấu khoai tây cà rốt (khoai tây và cà rốt ninh mềm nhừ, rất tốt cho người lớn tuổi và trẻ nhỏ).
+* **Tráng miệng:** Thanh long ruột đỏ (giúp tiêu hóa tốt).
+* **Mẹo chuẩn bị trước:** Cắt sẵn bông cải xanh, gọt vỏ khoai tây và cà rốt từ chiều hôm trước hoặc trữ trong hộp kín.
+
+### Thứ Ba (Ngày 2)
+
+* **Món đạm:** Thịt heo nạc vai kho tiêu ít nước mắm, nhạt muối (kho nhừ mềm, dễ ăn với cơm).
+* **Món rau:** Đậu bắp luộc (giàu chất nhờn tốt cho khớp của ông bà).
+* **Món canh:** Canh bầu nấu tôm tươi băm nhỏ (bầu ngọt mát, tôm băm nhuyễn dễ nuốt).
+* **Tráng miệng:** Xoài chín cây.
+* **Mẹo chuẩn bị trước:** Ướp thịt heo với hành củ và chút nước mắm từ trưa, tối chỉ việc bật bếp kho liu riu.
+
+### Thứ Tư (Ngày 3)
+
+* **Món đạm:** Gà phi lê áp chảo sốt nấm đông cô (thịt ức gà thái mỏng mềm, không bị khô, nấm đông cô giàu dinh dưỡng).
+* **Món rau:** Xà lách trộn dầu giấm chua ngọt nhẹ nhàng (cà chua bi, dưa leo).
+* **Món canh:** Canh rong biển đậu hũ non (thanh mát, dễ tiêu hóa).
+* **Tráng miệng:** Cam tươi bóc múi.
+* **Mẹo chuẩn bị trước:** Ngâm mềm nấm đông cô và rửa sạch rau từ chiều.
+
+### Thứ Năm (Ngày 4)
+
+* **Món đạm:** Bò né áp chảo hành tây (hoặc bò xào hành tây mềm thái mỏng, ưu tiên chọn thịt thăn bò mềm cho ông bà).
+* **Món rau:** Su hào và cà rốt xào thịt bò băm nhỏ (thái sợi mềm).
+* **Món canh:** Canh cải ngọt nấu thịt băm (cải thái nhỏ dễ ăn).
+* **Tráng miệng:** Chuối tiêu chín.
+* **Mẹo chuẩn bị trước:** Thái mỏng và ướp thịt bò sẵn với tỏi, dầu hào từ trưa.
+
+### Thứ Sáu (Ngày 5)
+
+* **Món đạm:** Tôm hấp nước dừa (tôm tươi ngọt thịt, không cần dầu mỡ, giữ nguyên vẹn chất dinh dưỡng).
+* **Món rau:** Cải bó xôi (rau chân vịt) luộc (mềm, giàu sắt và vitamin cho sự phát triển của trẻ).
+* **Món canh:** Canh mướp đắng (khổ qua) dồn thịt (chọn trái mướp đắng non, nấu thật nhừ để ông bà dễ ăn, thanh nhiệt).
+* **Tráng miệng:** Dưa hấu.
+* **Mẹo chuẩn bị trước:** Nhồi thịt vào mướp đắng và trữ tủ lạnh từ chiều.
+
+### Thứ Bảy (Ngày 6)
+
+* **Món đạm:** Đậu hũ nhồi thịt sốt cà chua nhạt (đậu hũ mềm mịn, thịt nạc dăm băm nhuyễn, nước sốt cà chua tự nhiên đưa cơm).
+* **Món rau:** Giá đỗ và hẹ xào lòng gà (hoặc xào không lòng gà để thanh đạm hơn).
+* **Món canh:** Canh bí đỏ nấu thịt băm (bí đỏ ninh nhừ bùi béo, rất thích hợp cho ông bà và trẻ em).
+* **Tráng miệng:** Lê tươi giòn ngọt.
+* **Mẹo chuẩn bị trước:** Nhồi thịt vào đậu hũ và cắt sẵn bí đỏ trước khi đi làm về.
+
+### Chủ Nhật (Ngày 7)
+
+* **Món đạm:** Gà luộc lá chanh (chọn gà ta thả vườn vừa ăn, xé phay phần ức cho bé và người lớn, phần đùi mềm cho ông bà).
+* **Món rau:** Nộm (gỏi) dưa leo cà rốt bóp thấu tai heo thái mỏng (hoặc đậu phộng giã nhỏ tùy chọn).
+* **Món canh:** Nước luộc gà nấu canh bắp cải thái nhỏ và gừng tươi.
+* **Tráng miệng:** Táo xanh.
+* **Mẹo chuẩn bị trước:** Luộc gà sẵn vào chiều Chủ Nhật, nước luộc cất tủ lạnh để làm canh, phần thịt chặt dĩa hoặc xé phay nhanh chóng.
+
+---
+
+## Danh Sách Đi Chợ (Mua 2 Ngày Một Lần)
+
+### Đợt 1: Ngày 1 - 2
+
+| Nhóm nguyên liệu | Tên nguyên liệu | Số lượng (đủ 6 người) |
+| --- | --- | --- |
+| **Thịt / Cá / Hải sản** | Cá diêu hồng (tươi) | 1 con (khoảng 1.0 kg - 1.2 kg) |
+|  | Sườn heo non | 500 g |
+|  | Thịt nạc vai heo | 600 g |
+|  | Tôm tươi | 400 g |
+| **Rau củ** | Bông cải xanh | 2 cây (khoảng 500 g) |
+|  | Khoai tây | 3 củ vừa (khoảng 400 g) |
+|  | Cà rốt | 3 củ |
+|  | Đậu bắp | 300 g |
+|  | Bầu | 1 quả vừa (khoảng 600 g) |
+|  | Hành lá, mùi tàu, rau mùi, hành củ | 1 mớ tổng hợp |
+| **Trái cây** | Thanh long ruột đỏ | 2 quả (khoảng 1.2 kg) |
+|  | Xoài chín | 2 quả (khoảng 800 g) |
+| **Gia vị & Khác** | Xì dầu, nước mắm, hạt nêm, tiêu, đường, dầu ăn | Lượng vừa đủ |
+
+---
+
+### Đợt 2: Ngày 3 - 4
+
+| Nhóm nguyên liệu | Tên nguyên liệu | Số lượng (đủ 6 người) |
+| --- | --- | --- |
+| **Thịt / Cá / Hải sản** | Phi lê ức gà | 600 g |
+|  | Thịt thăn bò | 500 g |
+|  | Thịt heo nạc xay | 300 g |
+| **Rau củ** | Nấm đông cô tươi (hoặc khô) | 200 g |
+|  | Xà lách, dưa leo, cà chua bi | 1 gói xà lách + 4 quả dưa leo + 200g cà chua bi |
+|  | Su hào | 2 củ |
+|  | Cải ngọt | 1 kg |
+|  | Hành tây, tỏi, gừng | 2 củ hành tây + 1 củ tỏi + 1 nhánh gừng |
+| **Trái cây** | Cam tươi | 1 kg |
+|  | Chuối tiêu | 1 nải (khoảng 6 - 8 quả) |
+| **Gia vị & Khác** | Rong biển khô nấu canh | 1 gói nhỏ (30 g) |
+|  | Dầu giấm, gia vị cơ bản | Lượng vừa đủ |
+
+---
+
+### Đợt 3: Ngày 5 - 6
+
+| Nhóm nguyên liệu | Tên nguyên liệu | Số lượng (đủ 6 người) |
+| --- | --- | --- |
+| **Thịt / Cá / Hải sản** | Tôm sú tươi | 700 g |
+|  | Thịt heo nạc xay | 500 g |
+|  | Đậu hũ trắng | 6 thanh / miếng lớn |
+| **Rau củ** | Cải bó xôi (rau chân vịt) | 800 g |
+|  | Mướp đắng (khổ qua) | 3 quả vừa |
+|  | Giá đỗ | 400 g |
+|  | Rau hẹ | 100 g |
+|  | Bí đỏ | 1 quả nhỏ (khoảng 600 g) |
+|  | Cà chua chín | 4 quả lớn |
+| **Trái cây** | Dưa hấu | 1 quả (khoảng 2.5 kg) |
+|  | Lê tươi | 4 quả (khoảng 800 g) |
+| **Gia vị & Khác** | Nước dừa tươi | 1 trái (lấy nước) |
+
+---
+
+### Đợt 4: Ngày 7
+
+| Nhóm nguyên liệu | Tên nguyên liệu | Số lượng (đủ 6 người) |
+| --- | --- | --- |
+| **Thịt / Cá / Hải sản** | Gà ta thả vườn | 1 con (khoảng 1.5 kg - 1.7 kg) |
+|  | Tai heo (tùy chọn làm gỏi) hoặc thịt nạc | 300 g |
+| **Rau củ** | Bắp cải trắng | 1 chiếc vừa (khoảng 600 g) |
+|  | Dưa leo, cà rốt (làm nộm) | 2 quả dưa leo + 1 củ cà rốt |
+|  | Rau răm, lá chanh, hành tỏi | 1 mớ nhỏ |
+| **Trái cây** | Táo xanh | 4 quả (khoảng 800 g) |
+| **Gia vị & Khác** | Đậu phộng rang (lạc) | 100 g |
+
+---
+
+## Tổng Hợp Nguyên Liệu Sử Dụng Nhiều Trong Tuần
+
+* **Thịt heo (nạc vai, nạc xay, sườn):** Xuất hiện ở các món kho, canh, nhồi đậu hũ, xào (được phân bổ đều, không lặp lại quá 2 lần dạng nguyên liệu chính trùng loại đậm đặc).
+* **Gia cầm (Gà):** Dùng 2 lần/tuần ở dạng phi lê áp chảo và gà luộc (đảm bảo đúng tiêu chuẩn không quá 2 lần/tuần).
+* **Cà rốt & Khoai tây/Bí đỏ:** Nhóm củ quả thông dụng, dễ bảo quản, dùng làm canh và xào kết hợp cho cả người già và trẻ em.
+* **Hành, tỏi, gừng:** Gia vị nền tảng giúp khử mùi tanh, tăng vị thơm tự nhiên mà hạn chế muối mặn.
+
+---
+
+## 5 Mẹo Meal Prep Giúp Giảm Thời Gian Nấu Xuống 20-30 Phút
+
+1. **Sơ chế protein ngay khi mua về:** Chia thịt, cá, tôm theo từng phần ăn của gia đình 6 người, ướp sẵn gia vị cơ bản rồi cấp đông. Khi cần nấu chỉ cần rã đông và chế biến.
+2. **Cắt gọt rau củ trước:** Các loại củ quả như bí đỏ, khoai tây, su hào, cà rốt có thể gọt vỏ, cắt khối sẵn và bảo quản trong hộp kín có lót giấy ăn trong ngăn mát tủ lạnh dùng trong 2-3 ngày.
+3. **Làm sẵn món kho/nhồi từ hôm trước:** Các món như thịt kho tiêu hoặc đậu hũ nhồi thịt, mướp đắng nhồi thịt có thể chuẩn bị từ chiều tối hôm trước hoặc trưa, tối về chỉ cần hâm nóng hoặc hấp lại trong 10 phút.
+4. **Tận dụng thiết bị nhà bếp:** Sử dụng nồi cơm điện có xửng hấp hoặc nồi chiên không dầu/lò nướng để làm chín món ăn nhanh chóng (như hấp cá, hấp tôm, áp chảo gà) mà không cần đứng canh bếp liên tục.
+5. **Lên sẵn thực đơn nước canh:** Các loại canh rau ngọt (bầu, mướp, cải) chỉ mất từ 5 đến 7 phút nấu sôi. Hãy băm sẵn hành tôm/thịt cho vào ngăn đá, lúc nấu chỉ cần thả nước sôi là xong.
+
+
+tôi thấy đây đúng là cái tôi cần, cải thiện app cho phù hợp với nhu cầu như vậy
