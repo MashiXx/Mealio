@@ -1,4 +1,9 @@
-import type { MenuContext, EditContext, CatalogReference } from "./types";
+import type {
+  MenuContext,
+  EditContext,
+  MealPrepContext,
+  CatalogReference,
+} from "./types";
 import { DISH_ROLE_LABEL } from "../enums";
 import { MAIN_PROTEINS } from "./schema";
 import { SEASONINGS_VI } from "@/data/seasonings";
@@ -71,6 +76,59 @@ function membersBlock(members: MenuContext["members"]): string {
 }
 
 /**
+ * Luật healthy cho phần SYSTEM — chốt cứng theo nhu cầu người dùng, không có
+ * knob cấu hình.
+ *
+ * Cố ý KHÔNG có bộ verify đi kèm: "hạn chế chiên rán" là mức độ chứ không phải
+ * luật nhị phân, mà bắt theo từ khoá tên món sẽ đánh oan "chả rán" hay "bò né áp
+ * chảo" rồi đốt một vòng sinh lại cho thứ không sai hẳn — cùng lập luận đã dùng
+ * để tha vai trò DO_CHUA khỏi R3.
+ */
+/**
+ * Luật cho trường prepAheadNote. Tách riêng vì hai prompt CÓ công thức
+ * (sinh mâm, sửa mâm) đều cần, còn prompt khung nhiều ngày thì không — khung chỉ
+ * có tên món, chưa tới lúc bàn chuyện sơ chế.
+ */
+const PREP_AHEAD_RULE =
+  "- prepAheadNote: MỘT câu ngắn nói việc có thể làm trước để tối về nấu nhanh (vd \"chiều ướp sẵn thịt, tối chỉ việc kho\"). Món không có gì làm trước được thì để chuỗi rỗng, ĐỪNG bịa.";
+
+const HEALTHY_RULES = [
+  "QUY TẮC HEALTHY (bắt buộc):",
+  "- Ưu tiên các cách chế biến: HẤP, LUỘC, ÁP CHẢO, KHO ÍT DẦU, NƯỚNG.",
+  "- HẠN CHẾ: món chiên/rán ngập dầu, thực phẩm chế biến sẵn, quá nhiều tinh bột, quá nhiều dầu mỡ.",
+  "- Món tráng miệng ưu tiên TRÁI CÂY tươi theo mùa, không phải đồ ngọt nhiều đường.",
+];
+
+/**
+ * Lưu ý theo nhóm tuổi có mặt trong nhà. `ageGroup` vốn đã vào prompt ở phần
+ * thành viên, nhưng chỉ như một nhãn — không kéo theo luật nào, nên "nhà có ông
+ * bà" và "nhà toàn người lớn" ra thực đơn y hệt nhau.
+ *
+ * Trả "" khi không có nhóm nào đáng lưu ý, để .filter ở nơi gọi tự loại dòng.
+ */
+export function ageNotesBlock(members: MenuContext["members"]): string {
+  const groups = new Set(members.map((m) => m.ageGroup));
+  const notes: string[] = [];
+  if (groups.has("SENIOR")) {
+    notes.push(
+      "- Nhà có NGƯỜI CAO TUỔI: ưu tiên món mềm, dễ nhai, ninh/hấp cho nhừ; giảm muối, giảm dầu mỡ.",
+    );
+  }
+  if (groups.has("CHILD") || groups.has("TEEN")) {
+    notes.push(
+      "- Nhà có TRẺ ĐANG LỚN: bảo đảm đủ đạm và canxi, món dễ ăn, không quá cay.",
+    );
+  }
+  if (groups.has("BABY")) {
+    notes.push("- Nhà có EM BÉ: cần món mềm, nhạt, cắt nhỏ được.");
+  }
+  if (notes.length === 0) return "";
+  return ["Lưu ý theo độ tuổi trong nhà (BẮT BUỘC tính đến):", ...notes].join(
+    "\n",
+  );
+}
+
+/**
  * Câu luật cho phần SYSTEM về ý muốn riêng của người dùng.
  *
  * Bắt buộc đi kèm mỗi khi prompt có userNote: người dùng gõ "nay thèm tôm" mà
@@ -112,6 +170,7 @@ export function buildMenuPrompt(ctx: MenuContext): {
     "- Ưu tiên món/nguyên liệu hợp khẩu vị, tránh món bị ghét.",
     "- Không lặp lại các món đã ăn gần đây.",
     ...(ctx.userNote ? [USER_NOTE_RULE] : []),
+    ...HEALTHY_RULES,
     "QUY TẮC CÂN BẰNG CẢ MÂM (chuyên môn):",
     "- Mỗi mâm phải cân đối nhóm chất: đủ đạm (món mặn), rau xanh (xào/luộc/canh), tinh bột (cơm trắng ngầm định, KHÔNG cần liệt kê).",
     "- Đa dạng phương pháp chế biến trong một mâm — KHÔNG hai món cùng kiểu (tránh 2 món chiên/rán).",
@@ -122,9 +181,10 @@ export function buildMenuPrompt(ctx: MenuContext): {
     "- Nếu có 'Món Việt tham khảo', ưu tiên chọn/biến tấu từ đó cho quen thuộc, đúng ẩm thực Việt.",
     "- Mỗi bữa phải trả ĐÚNG SỐ MÓN và ĐÚNG VAI TRÒ được yêu cầu bên dưới.",
     "- Tên món và công thức viết bằng tiếng Việt.",
+    PREP_AHEAD_RULE,
     "CHỈ trả về JSON đúng cấu trúc, KHÔNG kèm giải thích, KHÔNG markdown.",
     "Cấu trúc JSON:",
-    `{"meals":[{"date":"yyyy-mm-dd","mealType":"BREAKFAST|LUNCH|DINNER","dishes":[{"name":"string","dishRole":"MON_MAN|MON_XAO|CANH_SUP|RAU_LUOC|LAU|COM_BUN_PHO|MON_CUON|TRANG_MIENG|DO_CHUA","servings":number,"cookMinutes":number,"steps":["string"],"nutritionLabels":["string"],"ingredients":[{"name":"string","quantity":number,"unit":"string"}]}]}]}`,
+    `{"meals":[{"date":"yyyy-mm-dd","mealType":"BREAKFAST|LUNCH|DINNER","dishes":[{"name":"string","dishRole":"MON_MAN|MON_XAO|CANH_SUP|RAU_LUOC|LAU|COM_BUN_PHO|MON_CUON|TRANG_MIENG|DO_CHUA","servings":number,"cookMinutes":number,"steps":["string"],"nutritionLabels":["string"],"prepAheadNote":"string","ingredients":[{"name":"string","quantity":number,"unit":"string"}]}]}]}`,
     'Ví dụ nhãn dinh dưỡng: "nhiều rau", "ít dầu mỡ", "thanh đạm", "giàu đạm", "ít tinh bột".',
   ].join("\n");
 
@@ -204,11 +264,14 @@ export function buildMenuPrompt(ctx: MenuContext): {
     "Thành viên & sở thích:",
     membersText,
     "",
+    ageNotesBlock(ctx.members),
+    "",
     "Hồ sơ ăn uống:",
     `  - Khẩu vị vùng: ${REGION_LABEL[p.cuisineRegion] ?? p.cuisineRegion}`,
     `  - Độ cay: ${SPICE_LABEL[p.spiceLevel] ?? p.spiceLevel}`,
     `  - Ngân sách: ${BUDGET_LABEL[p.budgetLevel] ?? p.budgetLevel}`,
     `  - Thời gian nấu tối đa mỗi món: ${p.maxCookMinutes} phút`,
+    `  - Cả mâm nên nấu xong trong khoảng ${p.maxCookMinutes} phút — các món nấu song song được.`,
     `  - Mục tiêu healthy: ${p.healthGoals.length ? p.healthGoals.join(", ") : "cân bằng chung"}`,
     p.notes ? `  - Ghi chú: ${p.notes}` : "",
     "",
@@ -269,6 +332,7 @@ export function buildWeekPlanPrompt(ctx: MenuContext): {
     "- Tôn trọng các kiêng khem (ăn chay, không thịt bò, v.v.).",
     "- Ưu tiên món hợp khẩu vị, tránh món bị ghét.",
     ...(ctx.userNote ? [USER_NOTE_RULE] : []),
+    ...HEALTHY_RULES,
     "QUY TẮC CẢ ĐỢT (đây là lý do bạn được xem hết các ngày cùng lúc):",
     "- KHÔNG có hai món trùng tên trong toàn bộ khoảng ngày (riêng đồ chua ăn kèm thì được lặp).",
     "- Món mặn của hai ngày LIỀN NHAU phải khác đạm chính.",
@@ -285,6 +349,8 @@ export function buildWeekPlanPrompt(ctx: MenuContext): {
     "Thành viên & sở thích:",
     membersBlock(ctx.members),
     "",
+    ageNotesBlock(ctx.members),
+    "",
     userNoteBlock(ctx.userNote),
     "",
     "Hồ sơ ăn uống:",
@@ -292,6 +358,7 @@ export function buildWeekPlanPrompt(ctx: MenuContext): {
     `  - Độ cay: ${SPICE_LABEL[p.spiceLevel] ?? p.spiceLevel}`,
     `  - Ngân sách: ${BUDGET_LABEL[p.budgetLevel] ?? p.budgetLevel}`,
     `  - Thời gian nấu tối đa mỗi món: ${p.maxCookMinutes} phút`,
+    `  - Cả mâm nên nấu xong trong khoảng ${p.maxCookMinutes} phút — các món nấu song song được.`,
     `  - Mục tiêu healthy: ${p.healthGoals.length ? p.healthGoals.join(", ") : "cân bằng chung"}`,
     p.notes ? `  - Ghi chú: ${p.notes}` : "",
     "",
@@ -313,6 +380,50 @@ export function buildWeekPlanPrompt(ctx: MenuContext): {
     catalogReferenceText(ctx.catalogReference),
     ctx.retryNote ?? "",
     "Nhắc lại: CHỈ trả tên món + vai trò + đạm chính + nhãn dinh dưỡng. Không nguyên liệu, không các bước.",
+  ]
+    .filter((l) => l !== "")
+    .join("\n");
+
+  return { system, user };
+}
+
+/**
+ * Prompt xin mẹo meal prep cho cả đợt.
+ *
+ * Cố ý KHÔNG gửi công thức đầy đủ: mẹo là chuyện sắp xếp công việc (ướp sẵn, sơ
+ * chế trước, tận dụng nước luộc) chứ không phải chuyện nấu từng món, mà nhồi 14
+ * công thức vào đây thì prompt phình lên vô ích và Ollama trên CPU không kham.
+ */
+export function buildMealPrepPrompt(ctx: MealPrepContext): {
+  system: string;
+  user: string;
+} {
+  const system = [
+    "Bạn là đầu bếp gia đình người Việt, chuyên tổ chức bếp cho nhà bận rộn.",
+    "Nhiệm vụ: đưa ĐÚNG 5 mẹo chuẩn bị trước (meal prep) cho đợt thực đơn dưới đây.",
+    "QUY TẮC:",
+    "- Mẹo phải BÁM VÀO các món có thật trong danh sách, nêu tên món cụ thể khi có thể.",
+    "- Mỗi mẹo là một câu hoặc hai câu, hành động được ngay, không nói chung chung.",
+    "- Ưu tiên việc làm được từ tối hôm trước hoặc lúc rảnh cuối tuần.",
+    "- Viết bằng tiếng Việt.",
+    "CHỈ trả về JSON, KHÔNG giải thích, KHÔNG markdown.",
+    'Cấu trúc: {"tips":["string","string","string","string","string"]}',
+  ].join("\n");
+
+  const user = [
+    `Gia đình ${ctx.familySize} người, thực đơn ${ctx.days} ngày.`,
+    `Hiện mỗi mâm nấu mất khoảng ${ctx.maxCookMinutes} phút — các mẹo cần kéo xuống còn 20-30 phút.`,
+    "",
+    "Các món trong đợt:",
+    ctx.dishNames.length
+      ? ctx.dishNames.map((n) => `  - ${n}`).join("\n")
+      : "  (chưa có món nào)",
+    "",
+    ctx.topIngredients.length
+      ? `Nguyên liệu dùng nhiều trong đợt: ${ctx.topIngredients.join(", ")}.`
+      : "",
+    "",
+    "Trả về JSON đúng cấu trúc với đúng 5 mẹo.",
   ]
     .filter((l) => l !== "")
     .join("\n");
@@ -365,9 +476,10 @@ export function buildEditPrompt(ctx: EditContext): {
     "- TUYỆT ĐỐI không dùng nguyên liệu gây dị ứng; tôn trọng kiêng khem.",
     "- Không lặp lại món đã ăn gần đây; tránh trùng nguyên liệu chính với các món còn lại trong mâm.",
     "- Gắn nhãn dinh dưỡng cho từng món; công thức bằng tiếng Việt.",
+    PREP_AHEAD_RULE,
     `- ${scopeRule}`,
     "CHỈ trả về JSON, KHÔNG giải thích, KHÔNG markdown.",
-    `Cấu trúc JSON: {"dishes":[{"name":"string","dishRole":"MON_MAN|MON_XAO|CANH_SUP|RAU_LUOC|LAU|COM_BUN_PHO|MON_CUON|TRANG_MIENG|DO_CHUA","servings":number,"cookMinutes":number,"steps":["string"],"nutritionLabels":["string"],"ingredients":[{"name":"string","quantity":number,"unit":"string"}]}]}`,
+    `Cấu trúc JSON: {"dishes":[{"name":"string","dishRole":"MON_MAN|MON_XAO|CANH_SUP|RAU_LUOC|LAU|COM_BUN_PHO|MON_CUON|TRANG_MIENG|DO_CHUA","servings":number,"cookMinutes":number,"steps":["string"],"nutritionLabels":["string"],"prepAheadNote":"string","ingredients":[{"name":"string","quantity":number,"unit":"string"}]}]}`,
   ].join("\n");
 
   const p = ctx.profile;

@@ -2,6 +2,7 @@ import type {
   AiMenu,
   AiWeekPlan,
   AiEditResult,
+  AiMealPrep,
   MemberRecognition,
 } from "./schema";
 
@@ -123,6 +124,20 @@ export interface EditContext {
   catalogReference?: CatalogReference;
 }
 
+/**
+ * Ngữ cảnh xin mẹo meal prep cho cả đợt. Cố ý GỌN: chỉ tên món, nguyên liệu
+ * dùng nhiều và mốc thời gian — không kèm công thức đầy đủ, vì mẹo là chuyện sắp
+ * xếp công việc chứ không phải chuyện nấu từng món.
+ */
+export interface MealPrepContext {
+  familySize: number;
+  days: number;
+  dishNames: string[];
+  topIngredients: string[];
+  /** Thời gian nấu hiện tại của một mâm; mẹo cần kéo xuống thấp hơn mốc này. */
+  maxCookMinutes: number;
+}
+
 /** Kết quả kiểm tra kết nối nhẹ: danh sách model id endpoint báo là khả dụng. */
 export interface TestConnectionResult {
   models: string[];
@@ -138,6 +153,8 @@ export interface AIProvider {
   generateWeekPlan(ctx: MenuContext): Promise<AiWeekPlan>;
   generateMenu(ctx: MenuContext): Promise<AiMenu>;
   editMeal(ctx: EditContext): Promise<AiEditResult>;
+  /** Mẹo chuẩn bị trước cho cả đợt. Gọi THEO YÊU CẦU, không nằm trong luồng job. */
+  mealPrepTips(ctx: MealPrepContext): Promise<AiMealPrep>;
   recognizeMember(image: MemberImage): Promise<MemberRecognition>;
   /**
    * Gọi thử endpoint bằng lệnh liệt kê model (tốn ~0 token) để xác nhận

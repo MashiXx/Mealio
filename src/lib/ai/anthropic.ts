@@ -4,6 +4,7 @@ import type {
   AIProvider,
   MenuContext,
   EditContext,
+  MealPrepContext,
   MemberImage,
   TestConnectionResult,
 } from "./types";
@@ -11,16 +12,19 @@ import {
   buildMenuPrompt,
   buildWeekPlanPrompt,
   buildEditPrompt,
+  buildMealPrepPrompt,
   buildRecognitionPrompt,
 } from "./prompt";
 import {
   parseMenuJson,
   parseWeekPlanJson,
   parseEditJson,
+  parseMealPrepJson,
   parseRecognitionJson,
   type AiMenu,
   type AiWeekPlan,
   type AiEditResult,
+  type AiMealPrep,
   type MemberRecognition,
 } from "./schema";
 
@@ -85,6 +89,17 @@ export class AnthropicProvider implements AIProvider {
       messages: [{ role: "user", content: user }],
     });
     return parseEditJson(this.textOf(msg));
+  }
+
+  async mealPrepTips(ctx: MealPrepContext): Promise<AiMealPrep> {
+    const { system, user } = buildMealPrepPrompt(ctx);
+    const msg = await this.client().messages.create({
+      model: this.model,
+      max_tokens: 1024,
+      system,
+      messages: [{ role: "user", content: user }],
+    });
+    return parseMealPrepJson(this.textOf(msg));
   }
 
   async recognizeMember(image: MemberImage): Promise<MemberRecognition> {

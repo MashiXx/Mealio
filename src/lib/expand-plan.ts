@@ -56,6 +56,9 @@ export function catalogDishToAiDish(
     // Sao chép mảng: dữ liệu catalog là hằng dùng chung cả tiến trình, để lọt
     // tham chiếu ra ngoài là một chỗ sửa nhầm nguồn tĩnh rất khó lần ra.
     steps: [...dish.steps],
+    // Catalog chưa có dữ liệu "chuẩn bị trước" nên để rỗng; createRecipeFromDish
+    // đổi thành null và giao diện ẩn hẳn dòng đó.
+    prepAheadNote: "",
     nutritionLabels:
       nutritionLabels.length > 0 ? nutritionLabels : [...dish.nutritionLabels],
     ingredients: dish.ingredients.map((i) => ({

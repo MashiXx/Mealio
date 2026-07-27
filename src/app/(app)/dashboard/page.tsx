@@ -14,8 +14,10 @@ import { ackJobAction } from "@/lib/actions/menu";
 import { ackEditJobAction } from "@/lib/actions/edit";
 import { JobPoller } from "./JobPoller";
 import { ymd } from "@/lib/date";
+import { topIngredients, parseWeekSummary } from "@/lib/week-summary";
 import { MealCard, type MealView } from "./MealCard";
 import { DeleteDayButton } from "./DeleteDayButton";
+import { WeekSummary } from "./WeekSummary";
 
 const MEAL_RANK: Record<string, number> = {
   BREAKFAST: 0,
@@ -90,6 +92,31 @@ export default async function DashboardPage({
     list.sort((a, b) => MEAL_RANK[a.mealType] - MEAL_RANK[b.mealType]);
   }
   const days = [...byDay.keys()].sort();
+
+  // Bản tóm tắt bám vào ĐỢT có nhiều mâm sắp tới nhất — đó là "tuần này" theo
+  // nghĩa người dùng hiểu, kể cả khi còn sót vài mâm lẻ của đợt trước. Tính lại
+  // từ `meals` đã nạp chứ không truy vấn thêm: truy vấn đó đã kèm sẵn công thức
+  // và nguyên liệu, hỏi lần nữa là nhân đôi một câu nặng.
+  const byPlan = new Map<string, typeof meals>();
+  for (const m of meals) {
+    if (!m.mealPlanId) continue;
+    if (!byPlan.has(m.mealPlanId)) byPlan.set(m.mealPlanId, []);
+    byPlan.get(m.mealPlanId)!.push(m);
+  }
+  let currentPlanId: string | null = null;
+  for (const [id, list] of byPlan) {
+    if (!currentPlanId || list.length > byPlan.get(currentPlanId)!.length) {
+      currentPlanId = id;
+    }
+  }
+  const planMeals = currentPlanId ? byPlan.get(currentPlanId)! : [];
+  const planRow = currentPlanId
+    ? await prisma.mealPlan.findUnique({
+        where: { id: currentPlanId },
+        select: { summaryJson: true },
+      })
+    : null;
+  const summary = parseWeekSummary(planRow?.summaryJson);
 
   // Đã cấu hình AI khi có settings và: Ollama (không cần key) hoặc đã có API key.
   // Khớp quy tắc trong getAIProvider — nếu chỉ nhìn apiKeyEncrypted thì Ollama
@@ -226,6 +253,15 @@ export default async function DashboardPage({
         </div>
       )}
 
+      {currentPlanId && (
+        <WeekSummary
+          mealPlanId={currentPlanId}
+          days={new Set(planMeals.map((m) => ymd(m.date))).size}
+          ingredients={topIngredients(planMeals)}
+          tips={summary?.tips ?? null}
+        />
+      )}
+
       {days.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-10 text-center">
           <p className="text-zinc-500">Chưa có thực đơn nào sắp tới.</p>
@@ -288,6 +324,7 @@ export default async function DashboardPage({
                         (ri) => `${ri.ingredient.name} (${ri.quantity} ${ri.unit})`,
                       ),
                       steps: d.recipe.steps,
+                      prepAheadNote: d.recipe.prepAheadNote,
                       chatHistory: Array.isArray(d.chatHistory)
                         ? (d.chatHistory as MealView["chatHistory"])
                         : [],

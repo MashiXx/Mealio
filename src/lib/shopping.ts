@@ -26,6 +26,26 @@ function startOfToday(): Date {
 }
 
 /**
+ * Số ngày mỗi đợt đi chợ. Chốt cứng theo yêu cầu: mua hai ngày một lần.
+ * Xuất ra để trang /shopping suy được khoảng ngày của từng đợt mà không chép
+ * lại con số — hai nơi lệch nhau thì nhãn "Đợt 2 · 29-30/07" sẽ nói dối.
+ */
+export const BATCH_DAYS = 2;
+const DAY_MS = 86_400_000;
+
+/**
+ * Đợt thứ mấy, tính từ ngày sớm nhất còn phải nấu.
+ *
+ * Làm tròn thay vì chia thẳng: cả hai mốc đều là nửa đêm ĐỊA PHƯƠNG nên hiệu số
+ * luôn là bội của một ngày, nhưng làm tròn thì một giờ lệch bất ngờ (đổi giờ
+ * mùa, dữ liệu cũ lưu lệch) cũng không đẩy cả một ngày sang sai đợt.
+ */
+function batchOf(date: Date, earliest: Date): number {
+  const days = Math.round((date.getTime() - earliest.getTime()) / DAY_MS);
+  return Math.max(0, Math.floor(days / BATCH_DAYS));
+}
+
+/**
  * Khoá ghi theo GIA ĐÌNH, tự nhả khi transaction kết thúc.
  *
  * Cần thật, không phải phòng xa: `$transaction` chạy ở READ COMMITTED nên nguyên
@@ -133,6 +153,8 @@ export async function syncShopping(familyId: string): Promise<void> {
         where: { familyId, date: { gte: startOfToday() }, cookedAt: null },
         orderBy: [{ date: "asc" }, { mealType: "asc" }],
         select: {
+          // Cần cho việc chia đợt: mâm của ngày nào thì nguyên liệu vào đợt ấy.
+          date: true,
           dishes: {
             orderBy: { position: "asc" },
             select: {
@@ -157,23 +179,32 @@ export async function syncShopping(familyId: string): Promise<void> {
       // trọn cho `missingFor(..., kindOf)` bên dưới — một nguồn sự thật duy nhất.
       // Lọc thêm ở đây bằng `ri.ingredient.kind` sẽ sai vì cột đó nullable (NULL =
       // chưa phân loại, phải tra bảng tĩnh) và sẽ lệch với lúc verify.
-      const needs: Need[] = [];
+      // Gom theo ĐỢT chứ không thành một rổ phẳng: gộp toàn cục thì cà chua của
+      // ngày 1 và ngày 4 dồn thành một dòng, mất luôn thông tin đợt nào cần mua.
+      // meals đã orderBy date asc nên phần tử đầu là ngày sớm nhất.
+      const earliest = meals[0]?.date;
+      const needsByBatch = new Map<number, Need[]>();
+      let needCount = 0;
       for (const meal of meals) {
+        const b = earliest ? batchOf(meal.date, earliest) : 0;
+        const arr = needsByBatch.get(b) ?? [];
         for (const d of meal.dishes) {
           for (const ri of d.recipe.ingredients) {
-            needs.push({
+            arr.push({
               name: ri.ingredient.name,
               quantity: ri.quantity,
               unit: ri.unit,
             });
+            needCount++;
           }
         }
+        needsByBatch.set(b, arr);
       }
 
       // Không còn mâm nào sắp tới thì vẫn phải chạy tiếp chứ KHÔNG return sớm:
       // phần máy sinh cũ đã hết căn cứ, phải dọn. Chỉ bỏ qua mấy truy vấn tính.
-      let toBuy: Need[] = [];
-      if (needs.length > 0) {
+      const toBuy: { need: Need; batchIndex: number }[] = [];
+      if (needCount > 0) {
         const [pantryItems, allIngredients] = await Promise.all([
           tx.pantryItem.findMany({
             where: { familyId },
@@ -195,16 +226,27 @@ export async function syncShopping(familyId: string): Promise<void> {
         // Cùng một nguồn phân loại với lúc verify ở jobs.ts: cờ kind của gia đình,
         // thiếu thì rơi về bảng gia vị tĩnh.
         const kindOf = kindLookupFrom(allIngredients);
-        toBuy = mergeNeeds(missingFor(needs, pantry, kindOf));
+        // Trừ kho và gộp trùng TRONG TỪNG ĐỢT. missingFor xét theo tên (có/không
+        // có trong kho) chứ không trừ theo số lượng, nên chạy nhiều lượt không
+        // làm kho bị trừ nhiều lần.
+        for (const b of [...needsByBatch.keys()].sort((x, y) => x - y)) {
+          for (const need of mergeNeeds(
+            missingFor(needsByBatch.get(b)!, pantry, kindOf),
+          )) {
+            toBuy.push({ need, batchIndex: b });
+          }
+        }
       }
 
       // Tra Ingredient theo `normalized` (có @@unique[familyId, normalized]) chứ
       // KHÔNG theo `name`: cột name không unique và mergeNeeds có thể trả về biến
       // thể tên khác với bản ghi trong DB. Một truy vấn cho cả danh sách thay vì
-      // mỗi dòng một lượt. Hai dòng toBuy khác nhau không bao giờ trỏ cùng một
-      // Ingredient VỚI CÙNG đơn vị: mergeNeeds đã gộp theo (matchKey | đơn vị
-      // chuẩn hoá), mà matchKey khác nhau thì normalized cũng khác nhau.
-      const normalizedOf = toBuy.map((n) => normalizeIngredient(n.name));
+      // mỗi dòng một lượt. Trong CÙNG một đợt, hai dòng toBuy không bao giờ trỏ
+      // cùng một Ingredient với cùng đơn vị: mergeNeeds đã gộp theo (matchKey |
+      // đơn vị chuẩn hoá), mà matchKey khác nhau thì normalized cũng khác nhau.
+      // Giữa các đợt KHÁC nhau thì trùng là chuyện bình thường và đúng ý — cà
+      // chua cần cả đợt 1 lẫn đợt 3 thì phải là hai dòng để mua hai lần.
+      const normalizedOf = toBuy.map((t) => normalizeIngredient(t.need.name));
       const found =
         normalizedOf.length > 0
           ? await tx.ingredient.findMany({
@@ -214,14 +256,21 @@ export async function syncShopping(familyId: string): Promise<void> {
           : [];
       const idByNormalized = new Map(found.map((i) => [i.normalized, i.id]));
 
-      const items = toBuy.flatMap((need, i) => {
+      const items = toBuy.flatMap((t, i) => {
         const ingredientId = idByNormalized.get(normalizedOf[i]);
         // Không bao giờ xảy ra trên thực tế: mọi need.name đều lấy từ
         // Ingredient.name của chính gia đình này, nên tra ngược theo normalized
         // luôn thấy. Giữ nhánh này chỉ để TypeScript có kiểu chắc chắn, không phải
         // vì có ca nghiệp vụ nào rơi vào đây.
         if (!ingredientId) return [];
-        return [{ ingredientId, quantity: need.quantity, unit: need.unit }];
+        return [
+          {
+            ingredientId,
+            quantity: t.need.quantity,
+            unit: t.need.unit,
+            batchIndex: t.batchIndex,
+          },
+        ];
       });
 
       const listId = await openListId(tx, familyId, items.length > 0);

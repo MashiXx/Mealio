@@ -233,6 +233,10 @@ model Recipe {
   cookMinutes     Int          @default(30)
   steps           String[]     @default([])
   nutritionLabels String[]     @default([]) // nhiều rau, ít dầu mỡ, thanh đạm...
+  // Việc làm trước được để tối về nấu nhanh ("chiều ướp sẵn thịt"). null = món
+  // cũ trước tính năng này, hoặc món lấy từ catalog (catalog chưa có dữ liệu
+  // này) -> giao diện ẩn hẳn dòng ghi chú thay vì hiện một dòng rỗng.
+  prepAheadNote   String?
   createdAt       DateTime     @default(now())
 
   ingredients RecipeIngredient[]
@@ -277,6 +281,11 @@ model MealPlan {
   // job-ngày đọc lại được: đó là thứ giữ cho các ngày chạy RỜI NHAU vẫn không
   // trùng món và vẫn xoay vòng đạm đều.
   planJson Json?
+
+  // Mẹo meal prep do AI sinh THEO YÊU CẦU cho đợt này ({ tips: string[] }).
+  // null = chưa bấm tạo. Cố ý không sinh kèm lúc chạy job: mỗi job giữ đúng MỘT
+  // lời gọi AI để không job nào chạm ngưỡng treo.
+  summaryJson Json?
 
   meals PlannedMeal[]
 
@@ -385,6 +394,9 @@ model ShoppingItem {
   quantity  Float   @default(1)
   unit      String  @default("phần")
   purchased Boolean @default(false)
+  // Đợt đi chợ: 0 = đợt đầu (hai ngày gần nhất), 1 = đợt kế... Dòng người dùng
+  // tự gõ luôn ở đợt 0 vì nó không thuộc mâm nào.
+  batchIndex Int    @default(0)
   // true = người dùng tự gõ thêm; syncShopping KHÔNG được xoá hay cộng dồn vào.
   // Dòng máy sinh (false) bị DỰNG LẠI mỗi lần đồng bộ, nên nếu sync cộng dồn vào
   // một dòng manual thì con số người dùng gõ sẽ phình lên sau mỗi lần sinh lại

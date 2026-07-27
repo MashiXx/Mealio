@@ -30,6 +30,7 @@ export type DishView = {
   nutritionLabels: string[];
   ingredients: string[];
   steps: string[];
+  prepAheadNote: string | null;
   chatHistory: ChatTurn[];
 };
 
@@ -281,6 +282,7 @@ export function MealCard({
                   nutritionLabels: selected.nutritionLabels,
                   ingredients: selected.ingredients,
                   steps: selected.steps,
+                  prepAheadNote: selected.prepAheadNote,
                 }}
               />
               <DishPhotoCredit

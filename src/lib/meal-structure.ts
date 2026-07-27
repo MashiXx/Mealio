@@ -24,12 +24,18 @@ function autoCount(familySize: number): number {
   return 4;
 }
 
-/** Vai trò cho bữa chính (trưa/tối) khi cần `count` món. */
+/**
+ * Vai trò cho bữa chính (trưa/tối) khi cần `count` món.
+ *
+ * Thứ tự `extras` bám đúng cơ cấu mâm người dùng muốn: đạm + rau + canh, món thứ
+ * tư là TRÁNG MIỆNG chứ không phải rau luộc. Để rau luộc ở vị trí thứ tư thì mâm
+ * 4 món có tới hai món rau (xào + luộc) mà không có gì tráng miệng.
+ */
 function mainMealRoles(count: number): DishRoleStr[] {
   const n = Math.max(1, Math.min(5, count));
   if (n <= 1) return ["MON_MAN"];
   const roles: DishRoleStr[] = ["MON_MAN", "CANH_SUP"];
-  const extras: DishRoleStr[] = ["MON_XAO", "RAU_LUOC", "TRANG_MIENG", "MON_MAN"];
+  const extras: DishRoleStr[] = ["MON_XAO", "TRANG_MIENG", "RAU_LUOC", "MON_MAN"];
   let i = 0;
   while (roles.length < n && i < extras.length) roles.push(extras[i++]);
   return roles.slice(0, n).sort((a, b) => ROLE_RANK[a] - ROLE_RANK[b]);
