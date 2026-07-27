@@ -99,6 +99,16 @@ export type AiWeekPlan = z.infer<typeof aiWeekPlanSchema>;
 export type AiPlanMeal = z.infer<typeof aiPlanMealSchema>;
 export type AiPlanDish = z.infer<typeof aiPlanDishSchema>;
 
+/**
+ * Mẹo meal prep cho cả đợt. Chỉ có chữ, không dữ liệu cấu trúc — đây là phần
+ * DUY NHẤT của bản tóm tắt cần tới AI; "nguyên liệu dùng nhiều" đếm thẳng từ mâm
+ * nên không hỏi model.
+ */
+export const aiMealPrepSchema = z.object({
+  tips: z.array(z.string().min(1)).min(1),
+});
+export type AiMealPrep = z.infer<typeof aiMealPrepSchema>;
+
 // Kết quả AI trả về khi SỬA mâm: danh sách món (1 món cho DISH/ADD, cả mâm cho MEAL).
 export const aiEditSchema = z.object({
   dishes: z.array(aiDishSchema).min(1),
@@ -152,6 +162,17 @@ export function parseWeekPlanJson(text: string): AiWeekPlan {
   if (!result.success) {
     throw new Error(
       "JSON từ AI không đúng cấu trúc khung thực đơn: " + result.error.message,
+    );
+  }
+  return result.data;
+}
+
+/** Validate JSON mẹo meal prep theo aiMealPrepSchema. */
+export function parseMealPrepJson(text: string): AiMealPrep {
+  const result = aiMealPrepSchema.safeParse(extractJson(text));
+  if (!result.success) {
+    throw new Error(
+      "JSON mẹo chuẩn bị không đúng cấu trúc: " + result.error.message,
     );
   }
   return result.data;

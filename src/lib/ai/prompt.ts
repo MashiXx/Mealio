@@ -1,4 +1,9 @@
-import type { MenuContext, EditContext, CatalogReference } from "./types";
+import type {
+  MenuContext,
+  EditContext,
+  MealPrepContext,
+  CatalogReference,
+} from "./types";
 import { DISH_ROLE_LABEL } from "../enums";
 import { MAIN_PROTEINS } from "./schema";
 import { SEASONINGS_VI } from "@/data/seasonings";
@@ -375,6 +380,50 @@ export function buildWeekPlanPrompt(ctx: MenuContext): {
     catalogReferenceText(ctx.catalogReference),
     ctx.retryNote ?? "",
     "Nhắc lại: CHỈ trả tên món + vai trò + đạm chính + nhãn dinh dưỡng. Không nguyên liệu, không các bước.",
+  ]
+    .filter((l) => l !== "")
+    .join("\n");
+
+  return { system, user };
+}
+
+/**
+ * Prompt xin mẹo meal prep cho cả đợt.
+ *
+ * Cố ý KHÔNG gửi công thức đầy đủ: mẹo là chuyện sắp xếp công việc (ướp sẵn, sơ
+ * chế trước, tận dụng nước luộc) chứ không phải chuyện nấu từng món, mà nhồi 14
+ * công thức vào đây thì prompt phình lên vô ích và Ollama trên CPU không kham.
+ */
+export function buildMealPrepPrompt(ctx: MealPrepContext): {
+  system: string;
+  user: string;
+} {
+  const system = [
+    "Bạn là đầu bếp gia đình người Việt, chuyên tổ chức bếp cho nhà bận rộn.",
+    "Nhiệm vụ: đưa ĐÚNG 5 mẹo chuẩn bị trước (meal prep) cho đợt thực đơn dưới đây.",
+    "QUY TẮC:",
+    "- Mẹo phải BÁM VÀO các món có thật trong danh sách, nêu tên món cụ thể khi có thể.",
+    "- Mỗi mẹo là một câu hoặc hai câu, hành động được ngay, không nói chung chung.",
+    "- Ưu tiên việc làm được từ tối hôm trước hoặc lúc rảnh cuối tuần.",
+    "- Viết bằng tiếng Việt.",
+    "CHỈ trả về JSON, KHÔNG giải thích, KHÔNG markdown.",
+    'Cấu trúc: {"tips":["string","string","string","string","string"]}',
+  ].join("\n");
+
+  const user = [
+    `Gia đình ${ctx.familySize} người, thực đơn ${ctx.days} ngày.`,
+    `Hiện mỗi mâm nấu mất khoảng ${ctx.maxCookMinutes} phút — các mẹo cần kéo xuống còn 20-30 phút.`,
+    "",
+    "Các món trong đợt:",
+    ctx.dishNames.length
+      ? ctx.dishNames.map((n) => `  - ${n}`).join("\n")
+      : "  (chưa có món nào)",
+    "",
+    ctx.topIngredients.length
+      ? `Nguyên liệu dùng nhiều trong đợt: ${ctx.topIngredients.join(", ")}.`
+      : "",
+    "",
+    "Trả về JSON đúng cấu trúc với đúng 5 mẹo.",
   ]
     .filter((l) => l !== "")
     .join("\n");

@@ -282,6 +282,11 @@ model MealPlan {
   // trùng món và vẫn xoay vòng đạm đều.
   planJson Json?
 
+  // Mẹo meal prep do AI sinh THEO YÊU CẦU cho đợt này ({ tips: string[] }).
+  // null = chưa bấm tạo. Cố ý không sinh kèm lúc chạy job: mỗi job giữ đúng MỘT
+  // lời gọi AI để không job nào chạm ngưỡng treo.
+  summaryJson Json?
+
   meals PlannedMeal[]
 
   @@index([familyId])

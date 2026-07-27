@@ -175,12 +175,21 @@ Tách đôi theo độ tin cậy:
 
 - **Nguyên liệu dùng nhiều**: tính **thuần** từ `MealDish → Recipe →
   RecipeIngredient` của `MealPlan`, không gọi AI. Luôn đúng, không tốn gì.
-- **5 mẹo meal prep**: một lời gọi AI **theo yêu cầu** (nút ở trang thực đơn),
-  kết quả lưu vào `MealPlan.summaryJson`.
+  Đếm theo **số món** dùng nguyên liệu đó, và **bỏ qua gia vị**: muối, nước mắm,
+  tỏi có mặt ở gần như mọi món nên đứng đầu bảng là chuyện hiển nhiên, xếp hạng
+  chúng không nói lên điều gì về đợt này.
+- **5 mẹo meal prep**: một lời gọi AI **theo yêu cầu**, kết quả lưu vào
+  `MealPlan.summaryJson`. Prompt cố ý chỉ gửi TÊN món chứ không gửi công thức
+  đầy đủ — mẹo là chuyện sắp xếp công việc, mà nhồi 14 công thức vào thì prompt
+  phình vô ích và Ollama trên CPU không kham.
 
 Không nhét vào `runPlanJob`: repo cố ý giữ mỗi job đúng **một** lời gọi AI để
 không job nào chạm ngưỡng treo (xem `jobs.ts:213`). Thêm một lời gọi nữa vào đó
 là phá chính bất biến vừa dựng ở đợt trước.
+
+Chỗ đứng: một khối trên **Dashboard**, gắn với đợt có nhiều mâm sắp tới nhất —
+đó là "tuần này" theo nghĩa người dùng hiểu, kể cả khi còn sót vài mâm lẻ của đợt
+trước. Nhà chỉ sinh từng ngày lẻ thì không có `MealPlan` nên khối này ẩn hẳn.
 
 ---
 
